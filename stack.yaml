@@ -46,6 +46,9 @@ extra-deps:
 - xmlbf-0.2
 - cborg-0.2.0.0
 ### END safe-money deps
+## BEGIN test deps
+- hspec-smallcheck-0.5.0  # make "shouldBe" work with "SS.property"
+## END test deps
 
 #flags:
 #  safe-money:
