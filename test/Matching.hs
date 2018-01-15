@@ -30,6 +30,13 @@ spec = do
       it "BUY: should be beginning of order book sell orders" $
          SC.property $ \ob qty ->
             propBuyOrdersBegin shouldStartWith ob qty
+   describe "sell/buy at zero slippage" $ do
+      it "SELL returns the first buy orders at same price" $
+         SC.property $ \ob ->
+            propSellZeroSlippage shouldBe ob
+      it "BUY returns the first sell orders at same price" $
+         SC.property $ \ob ->
+            propBuyZeroSlippage shouldBe ob
 
 propSellSlippageQuote
    :: (Comp -> Comp -> b)
@@ -66,6 +73,30 @@ propBuyOrdersBegin comp (NonEmpty ob) (SS.Positive qty) =
    where
    sellRes = reverse $ resOrders (marketBuy ob qty)
    errMsg = "empty matched orders-list for positive quote quantity: " ++ show qty ++ "\n" ++ show ob
+
+propBuyZeroSlippage
+   :: ([Order "BASE" "QUOTE"] -> [Order "BASE" "QUOTE"] -> b)
+   -> NonEmpty TestOB
+   -> b
+propBuyZeroSlippage comp (NonEmpty ob) =
+   reverse (resOrders (slippageBuy ob 0)) `comp` firstOrders
+   where
+   bestPrice = maybe (error $ toS errMsg) oPrice (head bookOrders)
+   firstOrders = filter (\o -> oPrice o == bestPrice) bookOrders
+   bookOrders = Vec.toList $ sellOrder <$> obAsks ob
+   errMsg = "missing order in NonEmpty order book: " ++ show ob
+
+propSellZeroSlippage
+   :: ([Order "BASE" "QUOTE"] -> [Order "BASE" "QUOTE"] -> b)
+   -> NonEmpty TestOB
+   -> b
+propSellZeroSlippage comp (NonEmpty ob) =
+   reverse (resOrders (slippageSell ob 0)) `comp` firstOrders
+   where
+   bestPrice = maybe (error $ toS errMsg) oPrice (head bookOrders)
+   firstOrders = filter (\o -> oPrice o == bestPrice) bookOrders
+   bookOrders = Vec.toList $ buyOrder <$> obBids ob
+   errMsg = "missing order in NonEmpty order book: " ++ show ob
 
 
 type Comp = IgnoreFillRes (MatchResult "BASE" "QUOTE")
