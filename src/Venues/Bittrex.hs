@@ -22,7 +22,7 @@ import qualified Data.Char as Char
 import qualified Money
 
 
-instance Json.FromJSON (OrderBook "Bittrex" base quote) where
+instance Json.FromJSON (OrderBook "bittrex" base quote) where
    parseJSON val =
       let fromBook Book{..} = OrderBook
             <$> traverse (fmap BuyOrder . parseOrder)  buy
@@ -71,12 +71,12 @@ type Api base quote
    :> "getorderbook"
    :> QueryParam "market" Text
    :> QueryParam "type" Text
-   :> Get '[JSON] (OrderBook "Bittrex" base quote)
+   :> Get '[JSON] (OrderBook "bittrex" base quote)
 
-instance DataSource (OrderBook "Bittrex" "ADA" "BTC") where
+instance DataSource (OrderBook "bittrex" "ADA" "BTC") where
    dataSrc = mkBookSrc "ADA-BTC"
 
-mkBookSrc :: Text -> DataSrc (OrderBook "Bittrex" base quote)
+mkBookSrc :: Text -> DataSrc (OrderBook "bittrex" base quote)
 mkBookSrc pair = DataSrc baseurl (clientM (Just pair) (Just "both"))
    where
    clientM = SC.client (Proxy :: Proxy (Api base quote))
@@ -98,20 +98,20 @@ type ApiMarkets
    :> "v1.1"
    :> "public"
    :> "getmarkets"
-   :> Get '[JSON] (MarketList "Bittrex")
+   :> Get '[JSON] (MarketList "bittrex")
 
 
-instance DataSource (MarketList "Bittrex") where
+instance DataSource (MarketList "bittrex") where
    dataSrc = DataSrc baseurl clientM
       where
          clientM = SC.client (Proxy :: Proxy ApiMarkets)
 
-instance Json.FromJSON (MarketList "Bittrex") where
+instance Json.FromJSON (MarketList "bittrex") where
    parseJSON val = do
       wrap <- Json.parseJSON val
       return $ MarketList $ map fromBM (result wrap)
 
---instance Json.FromJSON (Market "Bittrex") where
+--instance Json.FromJSON (Market "bittrex") where
 
 fromBM :: BMarket -> Market venue
 fromBM BMarket{..} =
@@ -122,7 +122,7 @@ fromBM BMarket{..} =
       , miApiSymbol  = marketName
       }
 
-instance MarketInfo "Bittrex" base quote where
+instance MarketInfo "bittrex" base quote where
    marketBook Market{..} = mkBookSrc miApiSymbol
 
 {-

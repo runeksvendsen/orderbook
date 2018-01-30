@@ -13,17 +13,17 @@ main = do
    markets <- getMarkets man
    mapM_ print markets
 --   Lib.fetch man >>= either (error . show) return >>=
---      \(book :: Lib.OrderBook "GDAXl2" "BTC" "USD") -> (putStrLn book >> sellBuy book)
+--      \(book :: Lib.OrderBook "gdax-l2" "BTC" "USD") -> (putStrLn book >> sellBuy book)
 --   Lib.fetch man >>= either (error . toS . show) return >>=
---      \(book :: Lib.OrderBook "GDAXl3" "BTC" "USD") -> (sellBuy book)
+--      \(book :: Lib.OrderBook "gdax-l3" "BTC" "USD") -> (sellBuy book)
 --   Lib.fetch man >>= either (error . toS . show) return >>=
---      \(book :: Lib.OrderBook "Bitstamp" "BTC" "USD") -> (sellBuy book)
+--      \(book :: Lib.OrderBook "bitstamp" "BTC" "USD") -> (sellBuy book)
 --   Lib.fetch man >>= either (error . toS . show) return >>=
---      \(book :: Lib.OrderBook "BitfinexV2" "BTC" "USD") -> (sellBuy book)
+--      \(book :: Lib.OrderBook "bitfinex-v2" "BTC" "USD") -> (sellBuy book)
 --   Lib.fetch man >>= either (error . toS . show) return >>=
---      \(book :: Lib.OrderBook "BitfinexV2" "USDT" "USD") -> (sellBuy book)
+--      \(book :: Lib.OrderBook "bitfinex-v2" "USDT" "USD") -> (sellBuy book)
 --   Lib.fetch man >>= either (error . show) return >>=
---      \(book :: Lib.OrderBook "Bittrex" "ADA" "BTC") -> (putStrLn book >> sellBuy book)
+--      \(book :: Lib.OrderBook "bittrex" "ADA" "BTC") -> (putStrLn book >> sellBuy book)
 
 sellBuy :: (KnownSymbol venue, KnownSymbol base, KnownSymbol quote)
         => Lib.OrderBook venue base quote

@@ -19,5 +19,5 @@ data BSymbol = BSymbol
     , quotePrecision       :: Word
     }
 
-fromSymbol :: BSymbol -> Market "Binance"
+fromSymbol :: BSymbol -> Market "binance"
 fromSymbol BSymbol{..} = Market baseAsset quoteAsset symbol

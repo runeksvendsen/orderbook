@@ -19,7 +19,7 @@ import qualified Data.Scientific as Sci
 -- | https://docs.bitfinex.com/v2/reference#rest-public-books
 
 
-instance Json.FromJSON (OrderBook "BitfinexV2" base quote) where
+instance Json.FromJSON (OrderBook "bitfinex-v2" base quote) where
    parseJSON val = Json.parseJSON val >>= parseBook
 
 -- | https://docs.bitfinex.com/v2/reference#rest-public-books
@@ -55,9 +55,9 @@ type Api base quote
    :> Capture "symbol" Text
    :> "P0"
    :> QueryParam "len" Word
-   :> Get '[JSON] (OrderBook "BitfinexV2" base quote)
+   :> Get '[JSON] (OrderBook "bitfinex-v2" base quote)
 
-instance DataSource (OrderBook "BitfinexV2" "BTC" "USD") where
+instance DataSource (OrderBook "bitfinex-v2" "BTC" "USD") where
    dataSrc = DataSrc bitfinex (clientM "tBTCUSD" (Just 250))
       where
          clientM = SC.client (Proxy :: Proxy (Api "BTC" "USD"))

@@ -10,7 +10,6 @@ import qualified Servant.Client        as SC
 import           Servant.API
 import qualified Data.Aeson            as Json
 import qualified Network.HTTP.Client   as HTTP
-import GHC.TypeLits
 
 
 class MarketInfo (venue :: Symbol) (base :: Symbol) (quote :: Symbol) where

@@ -18,7 +18,7 @@ import Control.Monad.Fail
 import qualified Data.Text as T
 
 
-instance Json.FromJSON (OrderBook "Bitfinex" base quote) where
+instance Json.FromJSON (OrderBook "bitfinex" base quote) where
    parseJSON val =
       let fromBook Book{..} = OrderBook
             <$> traverse (fmap BuyOrder . parseOrder)  bids
@@ -51,31 +51,38 @@ type Api base quote
    :> Capture "symbol" Text
    :> QueryParam "limit_bids" Word
    :> QueryParam "limit_asks" Word
-   :> Get '[JSON] (OrderBook "Bitfinex" base quote)
+   :> Get '[JSON] (OrderBook "bitfinex" base quote)
 
 -- TODO: symbolVal?
-instance DataSource (OrderBook "Bitfinex" "BTC" "USD") where
+instance DataSource (OrderBook "bitfinex" "BTC" "USD") where
    dataSrc = DataSrc bitfinexUrl (clientM "btcusd" (Just 1000) (Just 1000))
       where
          clientM = SC.client (Proxy :: Proxy (Api "BTC" "USD"))
 
-instance DataSource (MarketList "Bitfinex") where
+instance DataSource (MarketList "bitfinex") where
    dataSrc = DataSrc bitfinexUrl clientM
       where
          clientM = SC.client (Proxy :: Proxy ApiMarkets)
+
+-- TODO: TMP!
+instance DataSource (MarketList "") where
+   dataSrc = undefined
+instance Json.FromJSON (MarketList "") where
+   parseJSON = undefined
+
 
 -- | https://api.bitfinex.com/v1/symbols
 type ApiMarkets
    = "v1"
    :> "symbols"
-   :> Get '[JSON] (MarketList "Bitfinex")
+   :> Get '[JSON] (MarketList "bitfinex")
 
 newtype TxtLst = TxtLst [Text] deriving Json.FromJSON
 
-instance Json.FromJSON (MarketList "Bitfinex") where
+instance Json.FromJSON (MarketList "bitfinex") where
    parseJSON val = MarketList <$> Json.parseJSON val
 
-instance Json.FromJSON (Market "Bitfinex") where
+instance Json.FromJSON (Market "bitfinex") where
    parseJSON = Json.withText "Bitfinex market" $ \currPair ->
          if T.length currPair /= 6
             then fail $ "Invalid symbol: " ++ toS currPair
@@ -85,6 +92,6 @@ instance Json.FromJSON (Market "Bitfinex") where
                   , miApiSymbol  = currPair
                   }
 
---instance MarketInfo "Bittrex" base quote where
+--instance MarketInfo "bittrex" base quote where
 --   marketBook Market{..} = mkBookSrc miApiSymbol
 

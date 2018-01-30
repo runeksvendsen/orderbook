@@ -14,7 +14,7 @@ import           Data.Vector  (Vector)
 import Control.Monad.Fail
 
 
-instance Json.FromJSON (OrderBook "Bitstamp" base quote) where
+instance Json.FromJSON (OrderBook "bitstamp" base quote) where
    parseJSON val =
       let fromBook Book{..} = OrderBook
             <$> traverse (fmap BuyOrder . parseOrder)  bids
@@ -42,9 +42,9 @@ type Api base quote
    :> "v2"
    :> "order_book"
    :> Capture "symbol" Text
-   :> Get '[JSON] (OrderBook "Bitstamp" base quote)
+   :> Get '[JSON] (OrderBook "bitstamp" base quote)
 
-instance DataSource (OrderBook "Bitstamp" "BTC" "USD") where
+instance DataSource (OrderBook "bitstamp" "BTC" "USD") where
    dataSrc = DataSrc bitstamp (clientM "btcusd")
       where
          clientM = SC.client (Proxy :: Proxy (Api "BTC" "USD"))

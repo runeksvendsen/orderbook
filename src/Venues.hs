@@ -2,6 +2,7 @@
 {-# LANGUAGE ExistentialQuantification #-}
 module Venues
 ( getMarkets
+, venueNames
 )
 where
 
@@ -26,47 +27,54 @@ data AnyVenue
    )
    => AnyVenue (Proxy venue)
 
-
 allVenues :: [AnyVenue]
 allVenues =
-   [
-     AnyVenue (Proxy :: Proxy "Bitfinex")
---   ,  AnyVenue (Proxy :: Proxy "Binance")
-
---   , AnyVenue (Proxy :: Proxy "Bitstamp")
-   , AnyVenue (Proxy :: Proxy "Bittrex")
---   , AnyVenue (Proxy :: Proxy "GDAXl2")
---   , AnyVenue (Proxy :: Proxy "GDAXl3")
+   [ AnyVenue (Proxy :: Proxy "bitfinex")
+   , AnyVenue (Proxy :: Proxy "bittrex")
+   , AnyVenue (Proxy :: Proxy "")
+--   ,  AnyVenue (Proxy :: Proxy "binance")
+--   , AnyVenue (Proxy :: Proxy "bitstamp")
+--   , AnyVenue (Proxy :: Proxy "gdax-l2")
+--   , AnyVenue (Proxy :: Proxy "gdax-l3")
    ]
 
-marketNames
-   :: [AnyVenue]
-   -> [String]
-marketNames = map (\(AnyVenue p) -> symbolVal p)
+venueNames :: [String]
+venueNames = map (\(AnyVenue p) -> symbolVal p) allVenues
 
-marketList' :: forall venue.
-              ( KnownSymbol venue
-              , DataSource (MarketList venue)
-              )
-           => HTTP.Manager
-           -> Proxy venue
-           -> IO (Either Req.ServantError (MarketList venue))
-marketList' man _ =
-   fetch man
+marketList'
+   :: forall venue.
+   ( KnownSymbol venue
+   , DataSource (MarketList venue)
+   )
+   => HTTP.Manager
+   -> Proxy venue
+   -> IO (Either Req.ServantError (MarketList venue))
+marketList' man _ = fetch man
 
 marketList :: HTTP.Manager -> AnyVenue -> IO [AnyMarket]
 marketList man (AnyVenue p) = do
-   MarketList a <- failOnErr . fmapL show <$> marketList' man p
+   MarketList a <- failOnErr <$> marketList' man p
    return $ map AnyMarket a
 
 getMarkets :: HTTP.Manager -> IO [AnyMarket]
 getMarkets man = do
---   MarketList bitfinex :: MarketList "Bitfinex" <- failOnErr . fmapL show <$> fetch man
---   MarketList bittrex  :: MarketList "Bittrex"  <- failOnErr . fmapL show <$> fetch man
    markets <- mapM (marketList man) allVenues
    return (concat markets)
 
 
-failOnErr :: forall a venue. KnownSymbol venue => Either String (a venue) -> a venue
-failOnErr = either (\str -> error . toS $ symbolVal (Proxy :: Proxy venue) <> ": " <> str) id
 
+
+
+{-
+
+forVenue
+   :: forall venue userVenue.
+      (KnownSymbol venue, KnownSymbol userVenue)
+   => (Proxy venue -> IO ())
+   -> Proxy userVenue
+   -> IO ()
+forVenue f userVenue =
+   forM_ allVenues $ \(AnyVenue proxy) ->
+       when (sameSym userVenue proxy) (f proxy)
+
+ -}

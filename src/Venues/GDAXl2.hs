@@ -14,7 +14,7 @@ import           Data.Vector  (Vector)
 import Control.Monad.Fail
 import qualified Data.Aeson.Types   as Json
 
-instance Json.FromJSON (OrderBook "GDAXl2" base quote) where
+instance Json.FromJSON (OrderBook "gdax-l2" base quote) where
    parseJSON val =
       let fromBook Book{..} = OrderBook
             <$> traverse (fmap BuyOrder . parseOrder)  bids
@@ -43,14 +43,14 @@ type Api base quote
    :> "book"
    :> QueryParam "level" Word
    :> Header "User-Agent" Text
-   :> Get '[JSON] (OrderBook "GDAXl2" base quote)
+   :> Get '[JSON] (OrderBook "gdax-l2" base quote)
 
-instance DataSource (OrderBook "GDAXl2" "BTC" "USD") where
+instance DataSource (OrderBook "gdax-l2" "BTC" "USD") where
    dataSrc = DataSrc gdax (clientM "BTC-USD" (Just 2) (Just userAgent))
       where
          clientM = SC.client (Proxy :: Proxy (Api "BTC" "USD"))
 
-instance DataSource (OrderBook "GDAXl2" "BTC" "EUR") where
+instance DataSource (OrderBook "gdax-l2" "BTC" "EUR") where
    dataSrc = DataSrc gdax (clientM "BTC-EUR" (Just 2) (Just userAgent))
       where
          clientM = SC.client (Proxy :: Proxy (Api "BTC" "EUR"))
