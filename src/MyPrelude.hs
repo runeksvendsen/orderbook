@@ -5,14 +5,18 @@ module MyPrelude
 , module TypeLits
 , Show
 , show
+, id
+, mod
 , trace
 , String
 , Vector
+, fmapL
+, printf
 )
 where
 
 import Protolude hiding (trace, Show, show)
-import Prelude (String, Show, show)
+import Prelude (String, Show, show, id, mod)
 import Debug.Trace (trace)
 import Safe
 import GHC.TypeLits as TypeLits (Symbol, KnownSymbol, symbolVal)
@@ -22,6 +26,7 @@ import GHC.TypeLits as TypeLits (Symbol, KnownSymbol, symbolVal)
 import Control.Monad.Fail
 import           Data.Vector  (Vector)
 import Text.Printf
+import Data.EitherR (fmapL)
 
 --instance Show a => Print a where
 --   putStr a = putStr (toS (show a) :: Text)

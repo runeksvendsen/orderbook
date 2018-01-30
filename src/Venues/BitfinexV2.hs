@@ -61,3 +61,5 @@ instance DataSource (OrderBook "BitfinexV2" "BTC" "USD") where
    dataSrc = DataSrc bitfinex (clientM "tBTCUSD" (Just 250))
       where
          clientM = SC.client (Proxy :: Proxy (Api "BTC" "USD"))
+
+

@@ -2,7 +2,6 @@
 module Lib.Fetch where
 
 import MyPrelude
-import Lib.OrderBook.Types
 import qualified Servant.Common.BaseUrl as S
 import qualified Servant.Client        as SC
 import           Servant.API

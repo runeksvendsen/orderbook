@@ -29,11 +29,11 @@ instance Json.FromJSON (OrderBook "Bittrex" base quote) where
             <*> traverse (fmap SellOrder . parseOrder) sell
       in Json.parseJSON val >>= fromBook . result
 
-newtype Wrap = Wrap
-   { result :: Book
+newtype Wrap res = Wrap
+   { result :: res
    } deriving Generic
 
-instance Json.FromJSON Wrap
+instance Json.FromJSON res => Json.FromJSON (Wrap res)
 
 data Book = Book
    { buy    :: Vector BittrexOrder
@@ -74,10 +74,12 @@ type Api base quote
    :> Get '[JSON] (OrderBook "Bittrex" base quote)
 
 instance DataSource (OrderBook "Bittrex" "ADA" "BTC") where
-   dataSrc = DataSrc baseurl (clientM (Just "BTC-ADA") (Just "both"))
-      where
-         clientM = SC.client (Proxy :: Proxy (Api "ADA" "BTC"))
+   dataSrc = mkBookSrc "ADA-BTC"
 
+mkBookSrc :: Text -> DataSrc (OrderBook "Bittrex" base quote)
+mkBookSrc pair = DataSrc baseurl (clientM (Just pair) (Just "both"))
+   where
+   clientM = SC.client (Proxy :: Proxy (Api base quote))
 
 data BMarket = BMarket
    { marketCurrency :: Text
@@ -96,18 +98,32 @@ type ApiMarkets
    :> "v1.1"
    :> "public"
    :> "getmarkets"
-   :> Get '[JSON] [Market "Bittrex"]
+   :> Get '[JSON] (MarketList "Bittrex")
 
-instance Json.FromJSON (Market "Bittrex") where
-   parseJSON val = fromBM <$> Json.parseJSON val
-      where fromBM BMarket{..} =
-               Market   -- Bittrex swaps around base/quote currency:
-                        --  https://twitter.com/runeksvendsen/status/945713209406902272
-                  { miBase       = marketCurrency
-                  , miQuote      = baseCurrency
-                  , miApiSymbol  = marketName
-                  }
 
+instance DataSource (MarketList "Bittrex") where
+   dataSrc = DataSrc baseurl clientM
+      where
+         clientM = SC.client (Proxy :: Proxy ApiMarkets)
+
+instance Json.FromJSON (MarketList "Bittrex") where
+   parseJSON val = do
+      wrap <- Json.parseJSON val
+      return $ MarketList $ map fromBM (result wrap)
+
+--instance Json.FromJSON (Market "Bittrex") where
+
+fromBM :: BMarket -> Market venue
+fromBM BMarket{..} =
+   Market   -- Bittrex swaps around base/quote currency:
+            --  https://twitter.com/runeksvendsen/status/945713209406902272
+      { miBase       = marketCurrency
+      , miQuote      = baseCurrency
+      , miApiSymbol  = marketName
+      }
+
+instance MarketInfo "Bittrex" base quote where
+   marketBook Market{..} = mkBookSrc miApiSymbol
 
 {-
     {

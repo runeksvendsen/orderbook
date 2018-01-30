@@ -7,7 +7,40 @@ import qualified Money
 import qualified Data.Vector  as Vec
 import Text.Printf
 import qualified Text.Show.Pretty   as P
+import qualified Control.Category   as Cat
 
+-- ETH/BTC . BTC/USD
+--------------------
+-- USD -> BTC -> ETH
+-- ETH -> BTC -> USD
+
+-- BuySide  ETH BTC . BuySide  BTC USD    (Buy  BTC for USD -> Buy  ETH for BTC)
+-- SellSide BTC USD . SellSide ETH BTC    (Sell ETH for BTC -> Sell BTC for USD)
+
+instance Cat.Category Order where
+   id = Order (fromRational pseudoInf) Cat.id
+      where pseudoInf = fromIntegral (maxBound :: Int64) % 1
+   o1 . o2 = Order (fromRational minQty) (oPrice o1 Cat.. oPrice o2)
+      where minQty = min (toRational $ oQuantity o1) (toRational $ oQuantity o2)
+
+-- | The result of composing two orders, plus the remainder
+composeRem :: Order b c
+           -> Order a b
+           -> (Order a c, Maybe (Either (Order b c) (Order a b)))
+composeRem bc ab =
+   fromDiff $ toRational (oQuantity bc) - toRational (oQuantity ab)
+   where
+   price = oPrice bc Cat.. oPrice ab
+   fromDiff diff
+      | diff == 0 = (Order (oQuantity ab) price, Nothing)
+      | diff >  0 = (Order (oQuantity ab) price, Just . Left $
+                     Order (fromRational diff) (oPrice bc))
+      | diff <  0 = (Order (fromRational . toRational $ oQuantity bc) price, Just . Right $
+                     Order (fromRational $ abs diff) (oPrice ab))
+
+
+newtype BuySide  base quote = BuySide (Vector (BuyOrder  base quote))
+newtype SellSide base quote = SellSide (Vector (SellOrder base quote))
 
 data OrderBook (venue :: Symbol) (base :: Symbol) (quote :: Symbol) = OrderBook
    { obBids  :: Vector (BuyOrder  base quote)
@@ -22,7 +55,7 @@ data Order (base :: Symbol) (quote :: Symbol) = Order
 instance Ord (Order base quote) where
    o1 <= o2 = oPrice o1 <= oPrice o2
 
-newtype BuyOrder  (base :: Symbol) (quote :: Symbol) = BuyOrder  { buyOrder :: Order base quote }
+newtype BuyOrder  (base :: Symbol) (quote :: Symbol) = BuyOrder  { buyOrder  :: Order base quote }
    deriving (Eq, Generic)
 newtype SellOrder (base :: Symbol) (quote :: Symbol) = SellOrder { sellOrder :: Order base quote }
    deriving (Eq, Generic)

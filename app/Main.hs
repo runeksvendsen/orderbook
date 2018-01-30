@@ -2,21 +2,26 @@ module Main where
 
 import MyPrelude
 import qualified Lib
-import Venues ()
+import Venues (getMarkets)
 import qualified Network.HTTP.Client.TLS as HTTPS
 
+-- getMarkets
 
 main :: IO ()
 main = do
    man <- HTTPS.newTlsManager
+   markets <- getMarkets man
+   mapM_ print markets
 --   Lib.fetch man >>= either (error . show) return >>=
 --      \(book :: Lib.OrderBook "GDAXl2" "BTC" "USD") -> (putStrLn book >> sellBuy book)
-   Lib.fetch man >>= either (error . toS . show) return >>=
-      \(book :: Lib.OrderBook "GDAXl3" "BTC" "USD") -> (sellBuy book)
-   Lib.fetch man >>= either (error . toS . show) return >>=
-      \(book :: Lib.OrderBook "Bitstamp" "BTC" "USD") -> (sellBuy book)
-   Lib.fetch man >>= either (error . toS . show) return >>=
-      \(book :: Lib.OrderBook "BitfinexV2" "BTC" "USD") -> (sellBuy book)
+--   Lib.fetch man >>= either (error . toS . show) return >>=
+--      \(book :: Lib.OrderBook "GDAXl3" "BTC" "USD") -> (sellBuy book)
+--   Lib.fetch man >>= either (error . toS . show) return >>=
+--      \(book :: Lib.OrderBook "Bitstamp" "BTC" "USD") -> (sellBuy book)
+--   Lib.fetch man >>= either (error . toS . show) return >>=
+--      \(book :: Lib.OrderBook "BitfinexV2" "BTC" "USD") -> (sellBuy book)
+--   Lib.fetch man >>= either (error . toS . show) return >>=
+--      \(book :: Lib.OrderBook "BitfinexV2" "USDT" "USD") -> (sellBuy book)
 --   Lib.fetch man >>= either (error . show) return >>=
 --      \(book :: Lib.OrderBook "Bittrex" "ADA" "BTC") -> (putStrLn book >> sellBuy book)
 

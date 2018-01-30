@@ -21,6 +21,7 @@ description:         Please see the README on Github at <https://github.com/gith
 
 default-extensions:
 - StrictData
+- BangPatterns
 - NoImplicitPrelude
 - ScopedTypeVariables
 - MultiParamTypeClasses
@@ -52,7 +53,8 @@ dependencies:
 - safe
 - http-client
 - http-client-tls
-
+- typelits-witnesses
+- errors
 
 library:
   source-dirs: src

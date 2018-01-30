@@ -13,18 +13,18 @@ suchThat :: Series m a -> (a -> Bool) -> Series m a
 suchThat s p = s >>= \x -> if p x then pure x else empty
 
 nonEmptyList :: Series Identity a -> Series m [a]
-nonEmptyList sma = do
+nonEmptyList series = do
    depth <- getDepth
-   return (depth `SS.list` sma) `suchThat` (not . null)
+   return (depth `SS.list` series) `suchThat` (not . null)
 
 instance (KnownSymbol base, KnownSymbol quote, Monad m) =>
    Serial m (OrderBook venue base quote) where
       series = do
-         midPrice   <- series
-         let buyOrderProp o = oPrice (buyOrder o) < midPrice
+         midPrice <- series
+         let buyOrderProp o  = oPrice (buyOrder o) < midPrice
              sellOrderProp o = oPrice (sellOrder o) > midPrice
          depth <- getDepth
-         let buyOrders = SS.list depth $ SS.series `suchThat` buyOrderProp
+         let buyOrders  = SS.list depth $ SS.series `suchThat` buyOrderProp
              sellOrders = SS.list depth $ SS.series `suchThat` sellOrderProp
          return $ OrderBook (Vec.fromList $ sort buyOrders)
                             (Vec.fromList $ sort sellOrders)
@@ -34,10 +34,10 @@ newtype NonEmpty a = NonEmpty a deriving (Eq, Show)
 instance (KnownSymbol base, KnownSymbol quote, Monad m) =>
    Serial m (NonEmpty (OrderBook venue base quote)) where
       series = do
-         midPrice   <- series
-         let buyOrderProp o = oPrice (buyOrder o) < midPrice
+         midPrice <- series
+         let buyOrderProp o  = oPrice (buyOrder o) < midPrice
              sellOrderProp o = oPrice (sellOrder o) > midPrice
-         buyOrders <- nonEmptyList $ SS.series `suchThat` buyOrderProp
+         buyOrders  <- nonEmptyList $ SS.series `suchThat` buyOrderProp
          sellOrders <- nonEmptyList $ SS.series `suchThat` sellOrderProp
          return $ NonEmpty $ OrderBook (Vec.fromList $ sort buyOrders)
                                        (Vec.fromList $ sort sellOrders)

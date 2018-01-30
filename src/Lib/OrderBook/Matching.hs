@@ -6,6 +6,8 @@ import Lib.OrderBook.Types
 import qualified Money
 import qualified Data.Vector as Vec
 import Text.Printf
+import GHC.TypeLits.List
+
 
 -- | Result of order match
 data FillResult
@@ -38,6 +40,11 @@ addOrder MatchResult{..} o@Order{..} =
                (resQuoteQty+Money.exchange oPrice oQuantity)
                (o : resOrders)
                resRes
+
+--concat :: (KnownSymbol base, KnownSymbol quote)
+--   => MatchResult base quote
+--   -> MatchResult base quote
+--   -> MatchResult base quote
 
 -- | Average execution price. 'Nothing' in case of zero, infinity or notANumber
 executionPrice :: MatchResult base quote -> Maybe (Money.ExchangeRate base quote)

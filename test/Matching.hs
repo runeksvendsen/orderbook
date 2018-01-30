@@ -12,6 +12,7 @@ import qualified Test.SmallCheck.Series as SS
 import Test.HUnit.Lang
 import Text.Printf
 import qualified Data.Vector  as Vec
+--import Control.DeepSeq
 
 
 spec :: Spec
@@ -19,10 +20,11 @@ spec = do
    describe "market order by slippage" $ do
       it "SELL has same MatchResult as by quote quantity" $
          SC.property $ \slippage' ob ->
-            propSellSlippageQuote shouldBe ob slippage'
+            propSellSlippageQuote (==) ob slippage'
       it "BUY has same MatchResult as by quote quantity" $
          SC.property $ \slippage' ob ->
-            propBuySlippageQuote shouldBe ob slippage'   -- (assertEqArgs slippage' ob)
+            propBuySlippageQuote (==) ob slippage'   -- (assertEqArgs slippage' ob)
+            {-
    describe "init (matched orders)" $ do
       it "SELL: should be beginning of order book buy orders" $
          SC.property $ \ob qty ->
@@ -37,6 +39,7 @@ spec = do
       it "BUY returns the first sell orders at same price" $
          SC.property $ \ob ->
             propBuyZeroSlippage shouldBe ob
+            -}
 
 propSellSlippageQuote
    :: (Comp -> Comp -> b)
@@ -111,15 +114,15 @@ assertEqArgs (SS.NonNegative slip) ob = assertEqual $
    printf "Slippage: %.4g, Book: \n%s"
            (realToFrac slip :: Double) (show ob)
 
-withParams :: SS.Serial Identity a
-           => SS.Depth
-           -> (SS.Depth -> a -> TestOB -> IO ())
-           -> IO ()
-withParams maxDepth ioa =
-   forM_ [0..maxDepth] $ \depth ->
-      forM_ (ssGen depth) $ \ob ->
-         forM_ (ssGen depth) $ \slippage' ->
-            ioa depth slippage' ob
+--withParams :: SS.Serial Identity a
+--           => SS.Depth
+--           -> (SS.Depth -> a -> TestOB -> IO ())
+--           -> IO ()
+--withParams maxDepth ioa =
+--   forM_ [0..maxDepth] $ \depth ->
+--      forM_ (ssGen depth) $ \ob ->
+--         forM_ (ssGen depth) $ \slippage' ->
+--            ioa depth slippage' ob
 
 {-
 
