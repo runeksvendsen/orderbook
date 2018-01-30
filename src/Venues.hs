@@ -31,7 +31,6 @@ allVenues :: [AnyVenue]
 allVenues =
    [ AnyVenue (Proxy :: Proxy "bitfinex")
    , AnyVenue (Proxy :: Proxy "bittrex")
-   , AnyVenue (Proxy :: Proxy "")
 --   ,  AnyVenue (Proxy :: Proxy "binance")
 --   , AnyVenue (Proxy :: Proxy "bitstamp")
 --   , AnyVenue (Proxy :: Proxy "gdax-l2")

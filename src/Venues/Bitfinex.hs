@@ -64,12 +64,6 @@ instance DataSource (MarketList "bitfinex") where
       where
          clientM = SC.client (Proxy :: Proxy ApiMarkets)
 
--- TODO: TMP!
-instance DataSource (MarketList "") where
-   dataSrc = undefined
-instance Json.FromJSON (MarketList "") where
-   parseJSON = undefined
-
 
 -- | https://api.bitfinex.com/v1/symbols
 type ApiMarkets
