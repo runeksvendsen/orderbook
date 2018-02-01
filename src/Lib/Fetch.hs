@@ -17,12 +17,19 @@ data DataSrc dataType = DataSrc
    , dsClientM :: SC.ClientM dataType
    }
 
+srcFetch
+   :: forall dataType.
+      HTTP.Manager
+   -> DataSrc dataType
+   -> IO (Either SC.ServantError dataType)
+srcFetch man ds = SC.runClientM clientM env
+   where env = SC.ClientEnv man (dsUrl ds)
+         clientM = dsClientM ds
+
 fetch :: forall dataType.
          DataSource dataType
       => HTTP.Manager
       -> IO (Either SC.ServantError dataType)
-fetch man = SC.runClientM clientM env
-   where env = SC.ClientEnv man (dsUrl (dataSrc :: DataSrc dataType))
-         clientM = dsClientM (dataSrc :: DataSrc dataType)
+fetch man = srcFetch man (dataSrc :: DataSrc dataType)
 
 

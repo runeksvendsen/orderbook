@@ -97,7 +97,7 @@ instance (KnownSymbol venue, KnownSymbol src, KnownSymbol dst) =>
    putStrLn l = putStr l >> putStr ("\n" :: Text)
 -}
 
-
+{-
 showOrder :: forall src dst.
              (KnownSymbol src, KnownSymbol dst)
           => String
@@ -116,3 +116,4 @@ showOrder name Order{..} =
 
 instance (KnownSymbol src, KnownSymbol dst) => Show (Order src dst) where
    show = showOrder "Order"
+-}

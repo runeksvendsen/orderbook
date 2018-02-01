@@ -1,8 +1,13 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ExistentialQuantification #-}
 module Venues
-( getMarkets
-, venueNames
+(
+--getMarkets
+  venueNames
+, AnyVenue(..)
+--, stringVenue
+--, marketList
+--, toAnyVenueTH
 )
 where
 
@@ -16,9 +21,27 @@ import Venues.BitfinexV2   as BitfinexV2     ()
 import Venues.Bittrex      as Bittrex        ()
 
 import Lib.Markets
+import Lib.OrderBook
 import Lib.Fetch
 import qualified Network.HTTP.Client   as HTTP
 import qualified Servant.Common.Req    as Req
+import qualified Servant.Client        as SC
+
+
+fetchBook
+   :: forall venue.
+      (MarketBook venue, KnownSymbol venue)
+   => HTTP.Manager
+   -> Market venue
+   -> IO (Either SC.ServantError (AnyBook venue))
+fetchBook man market = do
+   obE <- srcFetch man (marketBook market)
+   case someSymbolVal (toS $ miBase market) of
+      SomeSymbol (Proxy :: Proxy base) ->
+         case someSymbolVal (toS $ miQuote market) of
+               SomeSymbol (Proxy :: Proxy quote) ->
+                  return $ AnyBook <$> (obE :: Either SC.ServantError (OrderBook venue base quote))
+
 
 data AnyVenue
    = forall venue.
@@ -37,43 +60,5 @@ allVenues =
 --   , AnyVenue (Proxy :: Proxy "gdax-l3")
    ]
 
-venueNames :: [String]
-venueNames = map (\(AnyVenue p) -> symbolVal p) allVenues
-
-marketList'
-   :: forall venue.
-   ( KnownSymbol venue
-   , DataSource (MarketList venue)
-   )
-   => HTTP.Manager
-   -> Proxy venue
-   -> IO (Either Req.ServantError (MarketList venue))
-marketList' man _ = fetch man
-
-marketList :: HTTP.Manager -> AnyVenue -> IO [AnyMarket]
-marketList man (AnyVenue p) = do
-   MarketList a <- failOnErr <$> marketList' man p
-   return $ map AnyMarket a
-
-getMarkets :: HTTP.Manager -> IO [AnyMarket]
-getMarkets man = do
-   markets <- mapM (marketList man) allVenues
-   return (concat markets)
-
-
-
-
-
-{-
-
-forVenue
-   :: forall venue userVenue.
-      (KnownSymbol venue, KnownSymbol userVenue)
-   => (Proxy venue -> IO ())
-   -> Proxy userVenue
-   -> IO ()
-forVenue f userVenue =
-   forM_ allVenues $ \(AnyVenue proxy) ->
-       when (sameSym userVenue proxy) (f proxy)
-
- -}
+venueNames :: [(Text, AnyVenue)]
+!venueNames = map (\v@(AnyVenue p) -> (toS $ symbolVal p, v)) allVenues

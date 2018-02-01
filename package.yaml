@@ -43,6 +43,7 @@ dependencies:
 - safe-money      >= 0.4.1  && < 0.5
 - servant         >= 0.11   && < 0.12
 - servant-client  >= 0.11   && < 0.12
+- servant-server
 - aeson
 - vector
 - bytestring
@@ -55,6 +56,10 @@ dependencies:
 - http-client-tls
 - typelits-witnesses
 - errors
+# Venues
+- template-haskell
+- http-types
+- mtl
 
 library:
   source-dirs: src

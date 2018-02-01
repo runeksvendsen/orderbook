@@ -2,7 +2,7 @@ module Main where
 
 import MyPrelude
 import qualified Lib
-import Venues (getMarkets)
+import Venues ()
 import qualified Network.HTTP.Client.TLS as HTTPS
 
 -- getMarkets
@@ -10,10 +10,10 @@ import qualified Network.HTTP.Client.TLS as HTTPS
 main :: IO ()
 main = do
    man <- HTTPS.newTlsManager
-   markets <- getMarkets man
-   mapM_ print markets
---   Lib.fetch man >>= either (error . show) return >>=
---      \(book :: Lib.OrderBook "gdax-l2" "BTC" "USD") -> (putStrLn book >> sellBuy book)
+--   markets <- getMarkets man
+--   mapM_ print markets
+   Lib.fetch man >>= either (error . toS . show) return >>=
+      \(book :: Lib.OrderBook "gdax-l2" "BTC" "USD") -> (putStrLn book >> sellBuy book)
 --   Lib.fetch man >>= either (error . toS . show) return >>=
 --      \(book :: Lib.OrderBook "gdax-l3" "BTC" "USD") -> (sellBuy book)
 --   Lib.fetch man >>= either (error . toS . show) return >>=

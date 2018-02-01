@@ -20,11 +20,10 @@ spec = do
    describe "market order by slippage" $ do
       it "SELL has same MatchResult as by quote quantity" $
          SC.property $ \slippage' ob ->
-            propSellSlippageQuote (==) ob slippage'
+            propSellSlippageQuote (assertEqArgs slippage' ob) ob slippage'
       it "BUY has same MatchResult as by quote quantity" $
          SC.property $ \slippage' ob ->
-            propBuySlippageQuote (==) ob slippage'   -- (assertEqArgs slippage' ob)
-            {-
+            propBuySlippageQuote (assertEqArgs slippage' ob) ob slippage'   --
    describe "init (matched orders)" $ do
       it "SELL: should be beginning of order book buy orders" $
          SC.property $ \ob qty ->
@@ -39,7 +38,6 @@ spec = do
       it "BUY returns the first sell orders at same price" $
          SC.property $ \ob ->
             propBuyZeroSlippage shouldBe ob
-            -}
 
 propSellSlippageQuote
    :: (Comp -> Comp -> b)

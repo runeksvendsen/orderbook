@@ -1,4 +1,5 @@
---{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE RankNTypes #-}
 module Lib.OrderBook.Types where
 
 import MyPrelude
@@ -47,10 +48,32 @@ data OrderBook (venue :: Symbol) (base :: Symbol) (quote :: Symbol) = OrderBook
    , obAsks  :: Vector (SellOrder base quote)
    } deriving (Eq, Generic)
 
+data SomeBook (venue :: Symbol) = SomeBook
+   { sbBids  :: Vector SomeBuyOrder
+   , sbAsks  :: Vector SomeSellOrder
+   }
+
+--withSomeBook
+--   :: SomeBook venue
+--   -> (forall base quote. (KnownSymbol base, KnownSymbol quote) => OrderBook venue base quote -> r)
+--   -> r
+--withSomeBook book f =
+--   case someSymbolVal (sbBase book) of
+--      SomeSymbol (Proxy :: Proxy base) ->
+--         case someSymbolVal (sbQuote book) of
+--            SomeSymbol (Proxy :: Proxy quote) ->
+--               f (sbBook book :: OrderBook venue base quote)
+
 data Order (base :: Symbol) (quote :: Symbol) = Order
    { oQuantity :: Money.Dense base
    , oPrice    :: Money.ExchangeRate base quote
    } deriving (Eq, Generic)
+
+data SomeOrder = SomeOrder
+   { soQuantity :: Money.SomeDense
+   , soPrice    :: Money.SomeExchangeRate
+   } deriving (Eq, Generic)
+
 
 instance Ord (Order base quote) where
    o1 <= o2 = oPrice o1 <= oPrice o2
@@ -60,11 +83,24 @@ newtype BuyOrder  (base :: Symbol) (quote :: Symbol) = BuyOrder  { buyOrder  :: 
 newtype SellOrder (base :: Symbol) (quote :: Symbol) = SellOrder { sellOrder :: Order base quote }
    deriving (Eq, Generic)
 
+newtype SomeBuyOrder = SomeBuyOrder    { sBuyOrder  :: SomeOrder }
+      deriving (Eq, Generic)
+newtype SomeSellOrder = SomeSellOrder  { sSellOrder :: SomeOrder }
+      deriving (Eq, Generic)
+
 instance Ord (BuyOrder base quote) where
    o1 <= o2 = buyOrder o2 <= buyOrder o1     -- Buy orders with highest price first
 
 instance Ord (SellOrder base quote) where
    o1 <= o2 = sellOrder o1 <= sellOrder o2   -- Sell orders with lowest price first
+
+
+data AnyBook venue = forall base quote.
+   ( KnownSymbol venue
+   , KnownSymbol base
+   , KnownSymbol quote)
+     => AnyBook (OrderBook venue base quote)
+
 
 -- | Order book mid price (Nothing in case there are no bids and/or asks).
 --   Will fail horribly if bestBidPrice+bestAskPrice equals zero

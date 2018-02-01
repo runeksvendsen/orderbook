@@ -53,16 +53,21 @@ type Api base quote
    :> QueryParam "limit_asks" Word
    :> Get '[JSON] (OrderBook "bitfinex" base quote)
 
--- TODO: symbolVal?
-instance DataSource (OrderBook "bitfinex" "BTC" "USD") where
-   dataSrc = DataSrc bitfinexUrl (clientM "btcusd" (Just 1000) (Just 1000))
-      where
-         clientM = SC.client (Proxy :: Proxy (Api "BTC" "USD"))
+--instance DataSource (OrderBook "bitfinex" "BTC" "USD") where
+--   dataSrc = DataSrc bitfinexUrl (clientM "btcusd" (Just 1000) (Just 1000))
+--      where
+--         clientM = SC.client (Proxy :: Proxy (Api "BTC" "USD"))
 
 instance DataSource (MarketList "bitfinex") where
    dataSrc = DataSrc bitfinexUrl clientM
       where
          clientM = SC.client (Proxy :: Proxy ApiMarkets)
+
+instance MarketBook "bitfinex" where
+   marketBook Market{..} = DataSrc bitfinexUrl cm
+      where cm = clientM miApiSymbol (Just 1000) (Just 1000)
+            clientM = SC.client (Proxy :: Proxy (Api base quote))
+
 
 
 -- | https://api.bitfinex.com/v1/symbols
@@ -85,6 +90,9 @@ instance Json.FromJSON (Market "bitfinex") where
                   , miQuote      = T.toUpper $ T.takeEnd 3 currPair
                   , miApiSymbol  = currPair
                   }
+
+
+--marketBook :: Market "bitfinex" -> SC.ClientM (OrderBook "bitfinex" base quote)
 
 --instance MarketInfo "bittrex" base quote where
 --   marketBook Market{..} = mkBookSrc miApiSymbol

@@ -12,7 +12,10 @@ import qualified Data.Aeson            as Json
 import qualified Network.HTTP.Client   as HTTP
 
 
-class MarketInfo (venue :: Symbol) (base :: Symbol) (quote :: Symbol) where
+--class MarketInfo (venue :: Symbol) (base :: Symbol) (quote :: Symbol) where
+--   marketBook :: Market venue -> DataSrc (OrderBook venue base quote)
+
+class MarketBook venue where
    marketBook :: Market venue -> DataSrc (OrderBook venue base quote)
 
 data Market (venue :: Symbol) = Market
@@ -29,11 +32,14 @@ withMarketBook
    :: Market venue
    -> (forall base quote. (KnownSymbol base, KnownSymbol quote) => OrderBook venue base quote -> ret)
    -> ret
-withMarketBook mk f =
+withMarketBook market f =
    case someSymbolVal (toS $ miBase mk) of
       SomeSymbol (Proxy :: Proxy base) ->
          case someSymbolVal (toS $ miQuote mk) of
                SomeSymbol (Proxy :: Proxy quote) -> undefined
+--                  obE <- fetch man
+--                  let resE = fmap f obE :: Either SC.ServantError ret
+--                  return resE
 --                  f (Dense (someDenseAmount dr) :: OrderBook venue base quote)
 
 instance KnownSymbol venue => Show (Market venue) where
@@ -44,6 +50,7 @@ instance KnownSymbol venue => Show (Market venue) where
 
 instance Show AnyMarket where
    show (AnyMarket m) = show m
+
 
 {-
 class Json.FromJSON (OrderBook venue base quote) =>

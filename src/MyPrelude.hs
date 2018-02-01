@@ -3,13 +3,15 @@ module MyPrelude
 ( module Protolude
 , module Safe
 , module TypeLits
+, module Prelude
 , sameSym
-, Show
-, show
-, id
-, mod
+--, Show
+--, show
+
+--, id
+--, mod
 , trace
-, String
+--, String
 , Vector
 , fmapL
 , printf
@@ -18,7 +20,7 @@ module MyPrelude
 where
 
 import Protolude hiding (trace, Show, show)
-import Prelude (String, Show, show, id, mod)
+import Prelude as Prelude (String, Show, show, id, mod, lookup)
 import Debug.Trace (trace)
 import Safe
 import GHC.TypeLits as TypeLits (Symbol, KnownSymbol, SomeSymbol(..)
@@ -40,7 +42,23 @@ failOnErr :: forall a venue. KnownSymbol venue => Either Req.ServantError (a ven
 failOnErr = either (error . toS . errMsg . show) id
    where errMsg str = symbolVal (Proxy :: Proxy venue) <> ": " <> str
 
--- . fmapL show
+
+
+toNum :: String -> Maybe Int
+toNum "one"   = Just 1
+toNum "two"   = Just 2
+toNum "three" = Just 3
+toNum _       = Nothing
+
+numList =
+   [("one",   1)
+   ,("two",   2)
+   ,("three", 3)
+   ]
+
+toNum' :: String -> Maybe Int
+toNum' str = lookup str numList
+
 
 
 instance Print Rational where

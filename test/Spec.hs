@@ -14,7 +14,7 @@ scDepth = 7
 
 main = do
 --   hspecWith defaultConfig { configSmallCheckDepth = scDepth } Spec.spec
-   hspecWith defaultConfig StrSpec.spec
+--   hspecWith defaultConfig StrSpec.spec
    defaultMain properties
 
 properties :: TestTree
@@ -26,7 +26,6 @@ scProps = testGroup "(checked by SmallCheck)"
       \ob slippage' -> Spec.propSellSlippageQuote (==) ob slippage'
   , SC.testProperty "slippageBuy ob x == marketBuy ob (resQuoteQty $ slippageBuy ob x)" $
       \ob slippage' -> Spec.propBuySlippageQuote (==) ob slippage'
-  {-
   , SC.testProperty "obBids ob `startsWith` init (resOrders $ marketSell ob qty)" $
       \ob qty -> Spec.propSellOrdersBegin startsWith ob qty
   , SC.testProperty "obAsks ob `startsWith` init (resOrders $ marketBuy ob qty)" $
@@ -35,6 +34,5 @@ scProps = testGroup "(checked by SmallCheck)"
       \ob -> Spec.propSellZeroSlippage (==) ob
   , SC.testProperty "buy at zero slippage returns the first sell orders at same price" $
       \ob -> Spec.propBuyZeroSlippage (==) ob
-   -}
   ]
   where a `startsWith` b = take (length b) a == b

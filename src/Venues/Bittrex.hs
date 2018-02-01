@@ -100,6 +100,8 @@ type ApiMarkets
    :> "getmarkets"
    :> Get '[JSON] (MarketList "bittrex")
 
+instance MarketBook "bittrex" where
+   marketBook Market{..} = mkBookSrc miApiSymbol
 
 instance DataSource (MarketList "bittrex") where
    dataSrc = DataSrc baseurl clientM
@@ -121,9 +123,6 @@ fromBM BMarket{..} =
       , miQuote      = baseCurrency
       , miApiSymbol  = marketName
       }
-
-instance MarketInfo "bittrex" base quote where
-   marketBook Market{..} = mkBookSrc miApiSymbol
 
 {-
     {
