@@ -25,8 +25,8 @@ import qualified Money
 instance Json.FromJSON (OrderBook "bittrex" base quote) where
    parseJSON val =
       let fromBook Book{..} = OrderBook
-            <$> traverse (fmap BuyOrder . parseOrder)  buy
-            <*> traverse (fmap SellOrder . parseOrder) sell
+            <$> traverse parseOrder buy
+            <*> traverse parseOrder sell
       in Json.parseJSON val >>= fromBook . result
 
 newtype Wrap res = Wrap

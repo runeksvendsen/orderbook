@@ -28,19 +28,19 @@ import qualified Servant.Common.Req    as Req
 import qualified Servant.Client        as SC
 
 
-fetchBook
-   :: forall venue.
-      (MarketBook venue, KnownSymbol venue)
-   => HTTP.Manager
-   -> Market venue
-   -> IO (Either SC.ServantError (AnyBook venue))
-fetchBook man market = do
-   obE <- srcFetch man (marketBook market)
-   case someSymbolVal (toS $ miBase market) of
-      SomeSymbol (Proxy :: Proxy base) ->
-         case someSymbolVal (toS $ miQuote market) of
-               SomeSymbol (Proxy :: Proxy quote) ->
-                  return $ AnyBook <$> (obE :: Either SC.ServantError (OrderBook venue base quote))
+--fetchBook
+--   :: forall venue.
+--      (MarketBook venue, KnownSymbol venue)
+--   => HTTP.Manager
+--   -> Market venue
+--   -> IO (Either SC.ServantError (AnyBook venue))
+--fetchBook man market = do
+--   obE <- srcFetch man (marketBook market)
+--   case someSymbolVal (toS $ miBase market) of
+--      SomeSymbol (Proxy :: Proxy base) ->
+--         case someSymbolVal (toS $ miQuote market) of
+--               SomeSymbol (Proxy :: Proxy quote) ->
+--                  return $ AnyBook <$> (obE :: Either SC.ServantError (OrderBook venue base quote))
 
 
 data AnyVenue

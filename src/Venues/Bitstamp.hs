@@ -17,8 +17,8 @@ import Control.Monad.Fail
 instance Json.FromJSON (OrderBook "bitstamp" base quote) where
    parseJSON val =
       let fromBook Book{..} = OrderBook
-            <$> traverse (fmap BuyOrder . parseOrder)  bids
-            <*> traverse (fmap SellOrder . parseOrder) asks
+            <$> traverse parseOrder bids
+            <*> traverse parseOrder asks
       in Json.parseJSON val >>= fromBook
 
 data Book = Book

@@ -40,12 +40,12 @@ composeRem bc ab =
                      Order (fromRational $ abs diff) (oPrice ab))
 
 
-newtype BuySide  base quote = BuySide (Vector (BuyOrder  base quote))
-newtype SellSide base quote = SellSide (Vector (SellOrder base quote))
+--newtype BuySide  base quote = BuySide (Vector (BuyOrder  base quote))
+--newtype SellSide base quote = SellSide (Vector (SellOrder base quote))
 
 data OrderBook (venue :: Symbol) (base :: Symbol) (quote :: Symbol) = OrderBook
-   { obBids  :: Vector (BuyOrder  base quote)
-   , obAsks  :: Vector (SellOrder base quote)
+   { obBids  :: Vector (Order  base quote)
+   , obAsks  :: Vector (Order base quote)
    } deriving (Eq, Generic)
 
 data SomeBook (venue :: Symbol) = SomeBook
@@ -78,22 +78,10 @@ data SomeOrder = SomeOrder
 instance Ord (Order base quote) where
    o1 <= o2 = oPrice o1 <= oPrice o2
 
-newtype BuyOrder  (base :: Symbol) (quote :: Symbol) = BuyOrder  { buyOrder  :: Order base quote }
-   deriving (Eq, Generic)
-newtype SellOrder (base :: Symbol) (quote :: Symbol) = SellOrder { sellOrder :: Order base quote }
-   deriving (Eq, Generic)
-
 newtype SomeBuyOrder = SomeBuyOrder    { sBuyOrder  :: SomeOrder }
       deriving (Eq, Generic)
 newtype SomeSellOrder = SomeSellOrder  { sSellOrder :: SomeOrder }
       deriving (Eq, Generic)
-
-instance Ord (BuyOrder base quote) where
-   o1 <= o2 = buyOrder o2 <= buyOrder o1     -- Buy orders with highest price first
-
-instance Ord (SellOrder base quote) where
-   o1 <= o2 = sellOrder o1 <= sellOrder o2   -- Sell orders with lowest price first
-
 
 data AnyBook venue = forall base quote.
    ( KnownSymbol venue
@@ -118,8 +106,8 @@ midPrice OrderBook{..} =
    in
    if null obBids || null obAsks
       then Nothing
-      else Just . unsafeConv $ ( rationalPrice (buyOrder bestBid)
-                               + rationalPrice (sellOrder bestAsk) ) / 2
+      else Just . unsafeConv $ ( rationalPrice bestBid
+                               + rationalPrice bestAsk ) / 2
 
 showOrder :: forall base quote.
              (KnownSymbol base, KnownSymbol quote)
@@ -143,11 +131,11 @@ instance (KnownSymbol base, KnownSymbol quote) => Show (Order base quote) where
 --instance (KnownSymbol base, KnownSymbol quote) => Show [Order base quote] where
 --   show = concat . fmap (showOrder "Order")
 
-instance (KnownSymbol base, KnownSymbol quote) => Show (BuyOrder base quote) where
-   show = showOrder "BUY " . buyOrder
+--instance (KnownSymbol base, KnownSymbol quote) => Show (BuyOrder base quote) where
+--   show = showOrder "BUY " . buyOrder
 
-instance (KnownSymbol base, KnownSymbol quote) => Show (SellOrder base quote) where
-   show = showOrder "SELL" . sellOrder
+--instance (KnownSymbol base, KnownSymbol quote) => Show (SellOrder base quote) where
+--   show = showOrder "SELL" . sellOrder
 
 instance (KnownSymbol venue, KnownSymbol base, KnownSymbol quote) =>
             Show (OrderBook venue base quote) where
@@ -165,8 +153,8 @@ instance (KnownSymbol venue, KnownSymbol base, KnownSymbol quote) =>
          midPriceStr = case midPriceF of
                         Nothing -> "<no bids/asks>"
                         Just price -> printf "%.4f" price
-         orders =    askIndent <> intercalate askIndent (show <$> sortDesc (Vec.toList obAsks))
-                  <> bidIndent <> intercalate bidIndent (Vec.toList $ fmap show obBids)
+         orders =    askIndent <> intercalate askIndent (showOrder "SELL" <$> sortDesc (Vec.toList obAsks))
+                  <> bidIndent <> intercalate bidIndent (Vec.toList $ fmap (showOrder "BUY ") obBids)
       in printf template venue currPair midPriceStr orders
 
 instance (KnownSymbol venue, KnownSymbol base, KnownSymbol quote) =>

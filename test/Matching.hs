@@ -61,7 +61,7 @@ propSellOrdersBegin :: ([TestOrder] -> [TestOrder] -> b) -> NonEmpty TestOB -> S
 propSellOrdersBegin comp (NonEmpty ob) (SS.Positive qty) =
    case initMay sellRes of
       Nothing     -> error (toS errMsg) -- expectationFailure errMsg
-      Just orders -> Vec.toList (fmap buyOrder (obBids ob)) `comp` orders
+      Just orders -> Vec.toList (obBids ob) `comp` orders
    where
    sellRes = reverse $ resOrders (marketSell ob qty)
    errMsg = "empty matched orders-list for positive quote quantity: " ++ show qty ++ "\n" ++ show ob
@@ -70,7 +70,7 @@ propBuyOrdersBegin :: ([TestOrder] -> [TestOrder] -> b) -> NonEmpty TestOB -> SS
 propBuyOrdersBegin comp (NonEmpty ob) (SS.Positive qty) =
    case initMay sellRes of
       Nothing     -> error (toS errMsg) -- expectationFailure errMsg
-      Just orders -> Vec.toList (fmap sellOrder (obAsks ob)) `comp` orders
+      Just orders -> Vec.toList (obAsks ob) `comp` orders
    where
    sellRes = reverse $ resOrders (marketBuy ob qty)
    errMsg = "empty matched orders-list for positive quote quantity: " ++ show qty ++ "\n" ++ show ob
@@ -84,7 +84,7 @@ propBuyZeroSlippage comp (NonEmpty ob) =
    where
    bestPrice = maybe (error $ toS errMsg) oPrice (head bookOrders)
    firstOrders = filter (\o -> oPrice o == bestPrice) bookOrders
-   bookOrders = Vec.toList $ sellOrder <$> obAsks ob
+   bookOrders = Vec.toList $ obAsks ob
    errMsg = "missing order in NonEmpty order book: " ++ show ob
 
 propSellZeroSlippage
@@ -96,7 +96,7 @@ propSellZeroSlippage comp (NonEmpty ob) =
    where
    bestPrice = maybe (error $ toS errMsg) oPrice (head bookOrders)
    firstOrders = filter (\o -> oPrice o == bestPrice) bookOrders
-   bookOrders = Vec.toList $ buyOrder <$> obBids ob
+   bookOrders = Vec.toList $ obBids ob
    errMsg = "missing order in NonEmpty order book: " ++ show ob
 
 

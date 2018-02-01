@@ -78,12 +78,12 @@ _marketOrder orders quoteAmount =
 marketSell :: OrderBook venue base quote     -- ^ Order book
            -> Money.Dense quote              -- ^ Sell 'base' worth this 'quote'-amount
            -> MatchResult base quote         -- ^ Matched buy orders
-marketSell book = _marketOrder (fmap buyOrder (obBids book))
+marketSell book = _marketOrder (obBids book)
 
 marketBuy :: OrderBook venue base quote      -- ^ Order book
           -> Money.Dense quote               -- ^ Buy 'base' worth this 'quote'-amount
           -> MatchResult base quote          -- ^ Matched sell orders
-marketBuy book = _marketOrder (fmap sellOrder (obAsks book))
+marketBuy book = _marketOrder (obAsks book)
 
 -- | Maximum amount that can be bought/sold at given slippage
 _slippageOrder :: forall base quote.
@@ -114,14 +114,14 @@ slippageSell :: forall base quote venue.
              => OrderBook venue base quote   -- ^ Order book
              -> Rational                     -- ^ Desired slippage (in percent) (must be positive)
              -> MatchResult base quote       -- ^ Matched buy orders
-slippageSell book slip = _slippageOrder (fmap buyOrder (obBids book)) (-1 * slip)
+slippageSell book slip = _slippageOrder (obBids book) (-1 * slip)
 
 slippageBuy :: forall base quote venue.
                (KnownSymbol base, KnownSymbol quote)
             => OrderBook venue base quote -- ^ Order book
             -> Rational                   -- ^ Desired slippage (in percent) (must be positive)
             -> MatchResult base quote     -- ^ Matched sell orders
-slippageBuy book = _slippageOrder (fmap sellOrder (obAsks book))
+slippageBuy book = _slippageOrder (obAsks book)
 
 instance (KnownSymbol base, KnownSymbol quote) => Show (MatchResult base quote) where
    show mr@MatchResult{..} =

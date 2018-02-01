@@ -7,6 +7,7 @@ import qualified Test.QuickCheck    as QC
 import qualified Data.Vector        as Vec
 import Test.SmallCheck.Series       hiding (NonEmpty)
 import qualified Test.SmallCheck.Series as SS
+import Data.Ord
 
 
 suchThat :: Series m a -> (a -> Bool) -> Series m a
@@ -21,12 +22,12 @@ instance (KnownSymbol base, KnownSymbol quote, Monad m) =>
    Serial m (OrderBook venue base quote) where
       series = do
          midPrice <- series
-         let buyOrderProp o  = oPrice (buyOrder o) < midPrice
-             sellOrderProp o = oPrice (sellOrder o) > midPrice
+         let buyOrderProp o  = oPrice o < midPrice
+             sellOrderProp o = oPrice o > midPrice
          depth <- getDepth
          let buyOrders  = SS.list depth $ SS.series `suchThat` buyOrderProp
              sellOrders = SS.list depth $ SS.series `suchThat` sellOrderProp
-         return $ OrderBook (Vec.fromList $ sort buyOrders)
+         return $ OrderBook (Vec.fromList $ sortBy (comparing Down) buyOrders)
                             (Vec.fromList $ sort sellOrders)
 
 newtype NonEmpty a = NonEmpty a deriving (Eq, Show)
@@ -35,11 +36,11 @@ instance (KnownSymbol base, KnownSymbol quote, Monad m) =>
    Serial m (NonEmpty (OrderBook venue base quote)) where
       series = do
          midPrice <- series
-         let buyOrderProp o  = oPrice (buyOrder o) < midPrice
-             sellOrderProp o = oPrice (sellOrder o) > midPrice
+         let buyOrderProp o  = oPrice o < midPrice
+             sellOrderProp o = oPrice o > midPrice
          buyOrders  <- nonEmptyList $ SS.series `suchThat` buyOrderProp
          sellOrders <- nonEmptyList $ SS.series `suchThat` sellOrderProp
-         return $ NonEmpty $ OrderBook (Vec.fromList $ sort buyOrders)
+         return $ NonEmpty $ OrderBook (Vec.fromList $ sortBy (comparing Down) buyOrders)
                                        (Vec.fromList $ sort sellOrders)
 
 
@@ -49,12 +50,6 @@ instance (KnownSymbol base, KnownSymbol quote, Monad m) =>
          Positive qty <- series
          price        <- series
          return $ Order qty price
-
-instance (KnownSymbol base, KnownSymbol quote, Monad m) =>
-   Serial m (BuyOrder base quote)
-
-instance (KnownSymbol base, KnownSymbol quote, Monad m) =>
-   Serial m (SellOrder base quote)
 
 instance (KnownSymbol base, KnownSymbol quote, Monad m) =>
    Serial m (Money.ExchangeRate base quote) where
@@ -80,16 +75,10 @@ instance (KnownSymbol base, KnownSymbol quote) =>
             QC.Arbitrary (OrderBook venue base quote) where
    arbitrary = do
       midPrice   <- QC.arbitrary
-      buyOrders  <- QC.listOf $ QC.arbitrary `QC.suchThat` (\o -> oPrice (buyOrder o) < midPrice)
-      sellOrders <- QC.listOf $ QC.arbitrary `QC.suchThat` (\o -> oPrice (sellOrder o) > midPrice)
-      return $ OrderBook (Vec.fromList (sort buyOrders))
+      buyOrders  <- QC.listOf $ QC.arbitrary `QC.suchThat` (\o -> oPrice o < midPrice)
+      sellOrders <- QC.listOf $ QC.arbitrary `QC.suchThat` (\o -> oPrice o > midPrice)
+      return $ OrderBook (Vec.fromList (sortBy (comparing Down) buyOrders))
                          (Vec.fromList (sort sellOrders))
-
-instance QC.Arbitrary (SellOrder base quote) where
-   arbitrary = SellOrder <$> QC.arbitrary
-
-instance QC.Arbitrary (BuyOrder base quote) where
-   arbitrary = BuyOrder <$> QC.arbitrary
 
 instance QC.Arbitrary (Order base quote) where
    arbitrary = Order <$> QC.arbitrary `QC.suchThat` (> fromRational 0)

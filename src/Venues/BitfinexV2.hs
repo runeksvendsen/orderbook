@@ -42,8 +42,8 @@ parseBook book = do
    orders <- traverse parseOrder book
    return $ OrderBook (buyOrders orders) (sellOrders orders)
    where
-      buyOrders = fmap BuyOrder . Vec.filter ((> 0) . oQuantity)
-      sellOrders = fmap (SellOrder . fixSellQty) . Vec.filter ((< 0) . oQuantity)
+      buyOrders = Vec.filter ((> 0) . oQuantity)
+      sellOrders = fmap fixSellQty . Vec.filter ((< 0) . oQuantity)
       fixSellQty order@Order{..} = order { oQuantity = abs oQuantity }
 
 bitfinex :: S.BaseUrl

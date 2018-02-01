@@ -28,15 +28,15 @@ newtype MarketList venue = MarketList [Market venue]
 
 data AnyMarket = forall venue. (KnownSymbol venue) => AnyMarket (Market venue)
 
-withMarketBook
-   :: Market venue
-   -> (forall base quote. (KnownSymbol base, KnownSymbol quote) => OrderBook venue base quote -> ret)
-   -> ret
-withMarketBook market f =
-   case someSymbolVal (toS $ miBase mk) of
-      SomeSymbol (Proxy :: Proxy base) ->
-         case someSymbolVal (toS $ miQuote mk) of
-               SomeSymbol (Proxy :: Proxy quote) -> undefined
+--withMarketBook
+--   :: Market venue
+--   -> (forall base quote. (KnownSymbol base, KnownSymbol quote) => OrderBook venue base quote -> ret)
+--   -> ret
+--withMarketBook market f =
+--   case someSymbolVal (toS $ miBase mk) of
+--      SomeSymbol (Proxy :: Proxy base) ->
+--         case someSymbolVal (toS $ miQuote mk) of
+--               SomeSymbol (Proxy :: Proxy quote) -> undefined
 --                  obE <- fetch man
 --                  let resE = fmap f obE :: Either SC.ServantError ret
 --                  return resE
