@@ -22,12 +22,12 @@ import qualified Data.Char as Char
 import qualified Money
 
 
-instance Json.FromJSON (OrderBook "bittrex" base quote) where
+instance Json.FromJSON (SomeBook "bittrex") where
    parseJSON val =
-      let fromBook Book{..} = OrderBook
+      let fromBook Book{..} = mkSomeBook
             <$> traverse parseOrder buy
             <*> traverse parseOrder sell
-      in Json.parseJSON val >>= fromBook . result
+      in Json.parseJSON val >>= fromBook . result >>= either fail return
 
 newtype Wrap res = Wrap
    { result :: res
@@ -45,7 +45,7 @@ instance Json.FromJSON Book
 data BittrexOrder = BittrexOrder
    { quantity  :: Sci.Scientific
    , rate      :: Sci.Scientific
-   } deriving Generic
+   } deriving (Show, Generic)
 
 instance Json.FromJSON BittrexOrder where
   parseJSON  = Json.genericParseJSON
@@ -55,10 +55,10 @@ firstCharUpper :: String -> String
 firstCharUpper [] = []
 firstCharUpper (c1:cs) = Char.toUpper c1 : cs
 
-parseOrder :: BittrexOrder -> Json.Parser (Order base quote)
-parseOrder BittrexOrder{..} = Order
-   <$> convSci Money.dense quantity
-   <*> convSci Money.exchangeRate rate
+parseOrder :: BittrexOrder -> Json.Parser SomeOrder
+parseOrder bo@BittrexOrder{..} =
+   maybe (fail $ "Bad BittrexOrder: " ++ show bo) return soM
+   where soM = mkSomeOrder (toRational quantity) (toRational rate)
 
 
 baseurl = S.BaseUrl S.Https "bittrex.com" 443 ""
@@ -71,12 +71,12 @@ type Api base quote
    :> "getorderbook"
    :> QueryParam "market" Text
    :> QueryParam "type" Text
-   :> Get '[JSON] (OrderBook "bittrex" base quote)
+   :> Get '[JSON] (SomeBook "bittrex")
 
-instance DataSource (OrderBook "bittrex" "ADA" "BTC") where
-   dataSrc = mkBookSrc "ADA-BTC"
+--instance DataSource (OrderBook "bittrex" "ADA" "BTC") where
+--   dataSrc = mkBookSrc "ADA-BTC"
 
-mkBookSrc :: Text -> DataSrc (OrderBook "bittrex" base quote)
+mkBookSrc :: Text -> DataSrc (SomeBook "bittrex")
 mkBookSrc pair = DataSrc baseurl (clientM (Just pair) (Just "both"))
    where
    clientM = SC.client (Proxy :: Proxy (Api base quote))
@@ -101,7 +101,7 @@ type ApiMarkets
    :> Get '[JSON] (MarketList "bittrex")
 
 instance MarketBook "bittrex" where
-   marketBook Market{..} = mkBookSrc miApiSymbol
+   marketBook = mkBookSrc
 
 instance DataSource (MarketList "bittrex") where
    dataSrc = DataSrc baseurl clientM

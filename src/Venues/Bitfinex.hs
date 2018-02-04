@@ -6,7 +6,7 @@ where
 import MyPrelude     hiding (asks)
 import Lib.OrderBook
 import Lib.Markets
-import Venues.Common.StringArrayOrder  (parseOrderStr)
+import Venues.Common.StringArrayOrder  (parseSomeOrderStr)
 import qualified Servant.Common.BaseUrl as S
 import qualified Servant.Client        as SC
 import Servant.API
@@ -18,12 +18,23 @@ import Control.Monad.Fail
 import qualified Data.Text as T
 
 
-instance Json.FromJSON (OrderBook "bitfinex" base quote) where
+
+instance DataSource (MarketList "bitfinex") where
+   dataSrc = DataSrc apiUrl clientM
+      where
+         clientM = SC.client (Proxy :: Proxy ApiMarkets)
+
+instance MarketBook "bitfinex" where
+   marketBook apiSymbol = DataSrc apiUrl cm
+      where cm = clientM apiSymbol (Just 1000) (Just 1000)
+            clientM = SC.client (Proxy :: Proxy (Api base quote))
+
+instance Json.FromJSON (SomeBook "bitfinex") where
    parseJSON val =
-      let fromBook Book{..} = OrderBook
+      let fromBook Book{..} = mkSomeBook
             <$> traverse parseOrder bids
             <*> traverse parseOrder asks
-      in Json.parseJSON val >>= fromBook
+      in Json.parseJSON val >>= fromBook >>= either fail return
 
 data Book = Book
    { bids :: Vector BitfinexOrder
@@ -39,11 +50,11 @@ data BitfinexOrder = BitfinexOrder
 instance Json.FromJSON Book
 instance Json.FromJSON BitfinexOrder
 
-parseOrder :: BitfinexOrder -> Json.Parser (Order base quote)
-parseOrder BitfinexOrder{..} = parseOrderStr price amount
+parseOrder :: BitfinexOrder -> Json.Parser SomeOrder
+parseOrder BitfinexOrder{..} = parseSomeOrderStr price amount
 
-bitfinexUrl :: S.BaseUrl
-bitfinexUrl = S.BaseUrl S.Https "api.bitfinex.com" 443 ""
+apiUrl :: S.BaseUrl
+apiUrl = S.BaseUrl S.Https "api.bitfinex.com" 443 ""
 
 type Api base quote
    = "v1"
@@ -51,24 +62,7 @@ type Api base quote
    :> Capture "symbol" Text
    :> QueryParam "limit_bids" Word
    :> QueryParam "limit_asks" Word
-   :> Get '[JSON] (OrderBook "bitfinex" base quote)
-
---instance DataSource (OrderBook "bitfinex" "BTC" "USD") where
---   dataSrc = DataSrc bitfinexUrl (clientM "btcusd" (Just 1000) (Just 1000))
---      where
---         clientM = SC.client (Proxy :: Proxy (Api "BTC" "USD"))
-
-instance DataSource (MarketList "bitfinex") where
-   dataSrc = DataSrc bitfinexUrl clientM
-      where
-         clientM = SC.client (Proxy :: Proxy ApiMarkets)
-
-instance MarketBook "bitfinex" where
-   marketBook Market{..} = DataSrc bitfinexUrl cm
-      where cm = clientM miApiSymbol (Just 1000) (Just 1000)
-            clientM = SC.client (Proxy :: Proxy (Api base quote))
-
-
+   :> Get '[JSON] (SomeBook "bitfinex")
 
 -- | https://api.bitfinex.com/v1/symbols
 type ApiMarkets
@@ -76,7 +70,7 @@ type ApiMarkets
    :> "symbols"
    :> Get '[JSON] (MarketList "bitfinex")
 
-newtype TxtLst = TxtLst [Text] deriving Json.FromJSON
+--newtype TxtLst = TxtLst [Text] deriving Json.FromJSON
 
 instance Json.FromJSON (MarketList "bitfinex") where
    parseJSON val = MarketList <$> Json.parseJSON val
@@ -90,10 +84,4 @@ instance Json.FromJSON (Market "bitfinex") where
                   , miQuote      = T.toUpper $ T.takeEnd 3 currPair
                   , miApiSymbol  = currPair
                   }
-
-
---marketBook :: Market "bitfinex" -> SC.ClientM (OrderBook "bitfinex" base quote)
-
---instance MarketInfo "bittrex" base quote where
---   marketBook Market{..} = mkBookSrc miApiSymbol
 

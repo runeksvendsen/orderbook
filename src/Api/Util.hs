@@ -12,6 +12,8 @@ import qualified Network.HTTP.Types.Status as HTTP
 
 
 -- Util
+throwErr :: Either Req.ServantError a -> SS.Handler a
+throwErr = either (throwError . toServantErr) return
 
 -- | Convert 'Servant.Client' response status error to 'Servant.Server' throwable error
 toServantErr :: Req.ServantError -> SS.ServantErr
@@ -26,18 +28,6 @@ toServantErr Req.DecodeFailure{..} = let err = "Decode error: " ++ decodeError i
    SS.err500 { SS.errBody = toS err, SS.errReasonPhrase = err }
 toServantErr ex = let err = show ex in
    SS.err500 { SS.errBody = toS err, SS.errReasonPhrase = err }
-
-{-
-orderBook'
-   :: forall venue.
-   ( KnownSymbol venue
-   , DataSource (MarketList venue)
-   )
-   => HTTP.Manager
-   -> Proxy venue
-   -> IO (Either Req.ServantError (OrderBook venue base quote))
-orderBook' man _ = fetch man
--}
 
 marketList'
    :: forall venue.
@@ -55,7 +45,3 @@ marketList man (AnyVenue p) = do
    let getMarket (MarketList a) = a
    return $ map AnyMarket . getMarket <$> resE
 
---getMarkets :: HTTP.Manager -> IO [AnyMarket]
---getMarkets man = do
---   markets <- mapM (marketList man) allVenues
---   return (concat markets)

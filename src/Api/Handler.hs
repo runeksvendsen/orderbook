@@ -2,27 +2,63 @@ module Api.Handler where
 
 import MyPrelude
 import Api.Util
-import Lib.Markets.Types
+import Lib.Markets
 import Lib.Fetch
-import Venues -- (venueNames, stringVenue)
-import Control.Monad.Except            (throwError)
+import Lib.OrderBook
+import Venues
+--import Control.Monad.Except            (throwError)
 import qualified Network.HTTP.Client   as HTTP
 import qualified Servant.Server        as SS
+import Control.Monad.Error.Class       (throwError)
 
 
 listVenues :: SS.Handler [Text]
-listVenues = return $ map fst venueNames
+listVenues = return venueNames
 
-listMarkets :: HTTP.Manager -> Text -> SS.Handler [AnyMarket]
+listMarkets
+   :: HTTP.Manager
+   -> Text
+   -> SS.Handler [AnyMarket]
 listMarkets man venueName =
-   case lookup venueName venueNames of
+   withVenue venueName $ \venue ->
+      throwErr =<< liftIO (marketList man venue)
+
+slipSell :: HTTP.Manager
+         -> Text
+         -> Text
+         -> Double
+         -> SS.Handler SlippageInfo
+slipSell man venueName market slip =
+   withMarket venueName market $ \(AnyMarket market) -> do
+      AnyBook ob <- throwErr =<< liftIO (fetchFromMarket man market)
+      return $ fromMatchRes (slippageSell ob (realToFrac slip))
+
+slipBuy :: HTTP.Manager
+        -> Text
+        -> Text
+        -> Double
+        -> SS.Handler SlippageInfo
+slipBuy man venueName market slip =
+   withMarket venueName market $ \(AnyMarket market) -> do
+      AnyBook ob <- throwErr =<< liftIO (fetchFromMarket man market)
+      return $ fromMatchRes (slippageBuy ob (realToFrac slip))
+
+
+-- Helpers
+withVenue :: Text -> (AnyVenue -> SS.Handler r) -> SS.Handler r
+withVenue venueName f =
+   case venueLookup venueName of
       Nothing    -> throwError SS.err404
-      Just venue -> liftIO (marketList man venue)
-                       >>= either (throwError . toServantErr) return
+      Just venue -> f venue
+
+withMarket :: Text -> Text -> (AnyMarket -> SS.Handler r) -> SS.Handler r
+withMarket venueName marketName f =
+   withVenue venueName $ \venue ->
+      case fromString venue marketName of
+         Just anyMarket -> f anyMarket
+         Nothing        -> throwError
+            SS.err400 { SS.errReasonPhrase = "Invalid market: " <> toS marketName
+                      , SS.errBody = "Failed to parse market from string: " <> toS marketName
+                      }
 
 
-slippageSell :: HTTP.Manager -> Text -> Text -> SS.Handler [AnyMarket]
-slippageSell man venue market = undefined
-
-slippageBuy :: HTTP.Manager -> Text -> Text -> SS.Handler [AnyMarket]
-slippageBuy man venue market = undefined

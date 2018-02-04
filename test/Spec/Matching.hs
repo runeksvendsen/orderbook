@@ -1,4 +1,4 @@
-module Matching where
+module Spec.Matching where
 
 import MyPrelude
 import Lib.OrderBook

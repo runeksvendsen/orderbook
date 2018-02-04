@@ -44,6 +44,7 @@ dependencies:
 - servant         >= 0.11   && < 0.12
 - servant-client  >= 0.11   && < 0.12
 - servant-server
+- servant-docs
 - aeson
 - vector
 - bytestring
@@ -60,6 +61,7 @@ dependencies:
 - template-haskell
 - http-types
 - mtl
+- unordered-containers
 
 library:
   source-dirs: src

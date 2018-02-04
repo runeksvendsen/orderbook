@@ -21,3 +21,6 @@ parseOrderStr price qty =
 convSci :: (Rational -> Maybe a) -> Sci.Scientific -> Json.Parser a
 convSci conv sci = maybe (fail $ "Bad Rational: " <> show sci) return $
                conv (toRational sci)
+
+parseSomeOrderStr :: PriceStr -> QtyStr -> Json.Parser SomeOrder
+parseSomeOrderStr price qty = fromOrder <$> parseOrderStr price qty

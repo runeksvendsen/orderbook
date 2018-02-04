@@ -12,35 +12,26 @@ import qualified Data.Aeson            as Json
 import qualified Network.HTTP.Client   as HTTP
 
 
---class MarketInfo (venue :: Symbol) (base :: Symbol) (quote :: Symbol) where
---   marketBook :: Market venue -> DataSrc (OrderBook venue base quote)
-
-class MarketBook venue where
-   marketBook :: Market venue -> DataSrc (OrderBook venue base quote)
+-- | Use 'miApiSymbol' from 'Market' to fetch a 'SomeBook'
+class KnownSymbol venue => MarketBook venue where
+   marketBook :: Text -> DataSrc (SomeBook venue)
 
 data Market (venue :: Symbol) = Market
    { miBase       :: Text
    , miQuote      :: Text
    , miApiSymbol  :: Text
-   }
+   } deriving (Eq, Generic)
 
 newtype MarketList venue = MarketList [Market venue]
 
-data AnyMarket = forall venue. (KnownSymbol venue) => AnyMarket (Market venue)
+data AnyMarket = forall venue. MarketBook venue => AnyMarket (Market venue)
 
---withMarketBook
---   :: Market venue
---   -> (forall base quote. (KnownSymbol base, KnownSymbol quote) => OrderBook venue base quote -> ret)
---   -> ret
---withMarketBook market f =
---   case someSymbolVal (toS $ miBase mk) of
---      SomeSymbol (Proxy :: Proxy base) ->
---         case someSymbolVal (toS $ miQuote mk) of
---               SomeSymbol (Proxy :: Proxy quote) -> undefined
---                  obE <- fetch man
---                  let resE = fmap f obE :: Either SC.ServantError ret
---                  return resE
---                  f (Dense (someDenseAmount dr) :: OrderBook venue base quote)
+instance Eq AnyMarket where
+   (AnyMarket (m1 :: Market venue1)) == (AnyMarket (m2 :: Market venue2)) =
+      miBase m1 == miBase m2 &&
+      miQuote m1 == miQuote m2 &&
+      miApiSymbol m1 == miApiSymbol m2 &&
+      isJust (sameSymbol (Proxy :: Proxy venue1) (Proxy :: Proxy venue2))
 
 instance KnownSymbol venue => Show (Market venue) where
    show Market{..} = printf template venueName miBase miQuote
@@ -50,24 +41,3 @@ instance KnownSymbol venue => Show (Market venue) where
 
 instance Show AnyMarket where
    show (AnyMarket m) = show m
-
-
-{-
-class Json.FromJSON (OrderBook venue base quote) =>
-         DataSource (venue :: Symbol) (base :: Symbol) (quote :: Symbol) where
-   dataSrc :: DataSrc venue base quote
-
-data DataSrc (venue :: Symbol) (base :: Symbol) (quote :: Symbol) = DataSrc
-   { dsUrl     :: S.BaseUrl
-   , dsClientM :: SC.ClientM (OrderBook venue base quote)
-   }
-
-fetch :: forall venue base quote.
-         DataSource venue base quote
-      => HTTP.Manager
-      -> IO (Either SC.ServantError (OrderBook venue base quote))
-fetch man = SC.runClientM clientM env
-   where env = SC.ClientEnv man (dsUrl (dataSrc :: DataSrc venue base quote))
-         clientM = dsClientM (dataSrc :: DataSrc venue base quote)
-
- -}

@@ -1,6 +1,18 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE RankNTypes #-}
-module Lib.OrderBook.Types where
+module Lib.OrderBook.Types
+( OrderBook(..)
+, SomeBook
+, mkSomeBook
+, fromSomeBook
+, Order(..)
+, SomeOrder
+, AnyBook(..)
+, mkSomeOrder
+, fromOrder
+, midPrice
+)
+where
 
 import MyPrelude
 import qualified Money
@@ -9,6 +21,7 @@ import qualified Data.Vector  as Vec
 import Text.Printf
 import qualified Text.Show.Pretty   as P
 import qualified Control.Category   as Cat
+
 
 -- ETH/BTC . BTC/USD
 --------------------
@@ -44,25 +57,54 @@ composeRem bc ab =
 --newtype SellSide base quote = SellSide (Vector (SellOrder base quote))
 
 data OrderBook (venue :: Symbol) (base :: Symbol) (quote :: Symbol) = OrderBook
-   { obBids  :: Vector (Order  base quote)
+   { obBids  :: Vector (Order base quote)
    , obAsks  :: Vector (Order base quote)
    } deriving (Eq, Generic)
 
 data SomeBook (venue :: Symbol) = SomeBook
-   { sbBids  :: Vector SomeBuyOrder
-   , sbAsks  :: Vector SomeSellOrder
+   { sbBids  :: Vector SomeOrder
+   , sbAsks  :: Vector SomeOrder
    }
 
---withSomeBook
---   :: SomeBook venue
---   -> (forall base quote. (KnownSymbol base, KnownSymbol quote) => OrderBook venue base quote -> r)
---   -> r
---withSomeBook book f =
---   case someSymbolVal (sbBase book) of
---      SomeSymbol (Proxy :: Proxy base) ->
---         case someSymbolVal (sbQuote book) of
---            SomeSymbol (Proxy :: Proxy quote) ->
---               f (sbBook book :: OrderBook venue base quote)
+mkSomeBook
+   :: Vector SomeOrder  -- ^ Buy orders (bids)
+   -> Vector SomeOrder  -- ^ Sell orders (asks)
+   -> Either String (SomeBook venue)
+mkSomeBook bids asks
+   | null bids = Left "No bids"
+   | null asks = Left "No asks"
+   | otherwise = Right $ SomeBook bids asks
+
+
+fromSomeBook
+   :: (KnownSymbol venue, KnownSymbol base, KnownSymbol quote)
+   => SomeBook venue
+   -> OrderBook venue base quote
+fromSomeBook SomeBook{..} =
+   OrderBook (map fromSomeOrder sbBids)
+             (map fromSomeOrder sbAsks)
+
+
+{-
+-- | Create a 'SomeBook' only if all 'SomeOrder's have the same
+--    'Money.someDenseCurrency' and 'Money.someExchangeRateSrcCurrency',
+--    and if both bids and asks are non-empty
+
+
+withSomeBook
+   :: forall venue r.
+      KnownSymbol venue
+   => SomeBook venue
+   -> (forall base quote. (KnownSymbol base, KnownSymbol quote) => OrderBook venue base quote -> r)
+   -> r
+withSomeBook book f = let (base,quote) = soSrcDstCurrency . Vec.head . sbBids $ book in
+   case someSymbolVal base of
+      SomeSymbol baseP@(Proxy :: Proxy base) ->
+         case someSymbolVal quote of
+            SomeSymbol quoteP@(Proxy :: Proxy quote) ->
+               f (fromMaybe (error . toS $ "BUG: fromSomeBook failure: " ++ show (show . Vec.head . sbBids $ book, base, quote)) $
+                  fromSomeBook book :: OrderBook venue base quote)
+-}
 
 data Order (base :: Symbol) (quote :: Symbol) = Order
    { oQuantity :: Money.Dense base
@@ -70,18 +112,46 @@ data Order (base :: Symbol) (quote :: Symbol) = Order
    } deriving (Eq, Generic)
 
 data SomeOrder = SomeOrder
-   { soQuantity :: Money.SomeDense
-   , soPrice    :: Money.SomeExchangeRate
-   } deriving (Eq, Generic)
+   { soQuantity :: Rational
+   , soPrice    :: Rational
+   } deriving (Eq, Generic, Show)
 
+-- | Create a 'SomeOrder' only if price > 0 and neither 'notANumber' nor 'infinity'
+mkSomeOrder :: Rational    -- ^ Quantity
+            -> Rational    -- ^ Price
+            -> Maybe SomeOrder
+mkSomeOrder qty price =
+   SomeOrder <$> fmap toRational (Money.dense qty)
+             <*> fmap Money.fromExchangeRate (Money.exchangeRate price)
+
+fromOrder
+   :: Order base quote
+   -> SomeOrder
+fromOrder Order{..} =
+   SomeOrder (toRational oQuantity)
+             (Money.fromExchangeRate oPrice)
+
+fromSomeOrder
+   :: (KnownSymbol base, KnownSymbol quote)
+   => SomeOrder
+   -> Order base quote
+fromSomeOrder so@SomeOrder{..} = -- We know SomeOrder contains valid Dense/ExchangeRate
+   let throwBug = error . toS $ "SomeOrder: invalid qty/price: " ++ show so in
+   Order (fromMaybe throwBug $ Money.dense soQuantity)
+         (fromMaybe throwBug $ Money.exchangeRate soPrice)
+
+{-
+-- | Return src and dst currency (base and quote, respectively) for 'SomeOrder'
+soSrcDstCurrency :: SomeOrder -> (String,String)
+soSrcDstCurrency SomeOrder{..} =
+   ( Money.someExchangeRateSrcCurrency soPrice
+   , Money.someExchangeRateDstCurrency soPrice
+   )
+
+-}
 
 instance Ord (Order base quote) where
    o1 <= o2 = oPrice o1 <= oPrice o2
-
-newtype SomeBuyOrder = SomeBuyOrder    { sBuyOrder  :: SomeOrder }
-      deriving (Eq, Generic)
-newtype SomeSellOrder = SomeSellOrder  { sSellOrder :: SomeOrder }
-      deriving (Eq, Generic)
 
 data AnyBook venue = forall base quote.
    ( KnownSymbol venue
@@ -136,6 +206,9 @@ instance (KnownSymbol base, KnownSymbol quote) => Show (Order base quote) where
 
 --instance (KnownSymbol base, KnownSymbol quote) => Show (SellOrder base quote) where
 --   show = showOrder "SELL" . sellOrder
+
+--instance KnownSymbol venue => Show (SomeBook venue) where
+--   show sb = withSomeBook sb show
 
 instance (KnownSymbol venue, KnownSymbol base, KnownSymbol quote) =>
             Show (OrderBook venue base quote) where

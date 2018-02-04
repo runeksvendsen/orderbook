@@ -1,9 +1,8 @@
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE ExistentialQuantification #-}
 module Venues
 (
 --getMarkets
   venueNames
+, venueLookup
 , AnyVenue(..)
 --, stringVenue
 --, marketList
@@ -23,42 +22,28 @@ import Venues.Bittrex      as Bittrex        ()
 import Lib.Markets
 import Lib.OrderBook
 import Lib.Fetch
+import Lib.Venue
 import qualified Network.HTTP.Client   as HTTP
 import qualified Servant.Common.Req    as Req
 import qualified Servant.Client        as SC
+import qualified Data.HashMap.Strict   as HM
 
-
---fetchBook
---   :: forall venue.
---      (MarketBook venue, KnownSymbol venue)
---   => HTTP.Manager
---   -> Market venue
---   -> IO (Either SC.ServantError (AnyBook venue))
---fetchBook man market = do
---   obE <- srcFetch man (marketBook market)
---   case someSymbolVal (toS $ miBase market) of
---      SomeSymbol (Proxy :: Proxy base) ->
---         case someSymbolVal (toS $ miQuote market) of
---               SomeSymbol (Proxy :: Proxy quote) ->
---                  return $ AnyBook <$> (obE :: Either SC.ServantError (OrderBook venue base quote))
-
-
-data AnyVenue
-   = forall venue.
-   ( KnownSymbol venue
-   , DataSource (MarketList venue)
-   )
-   => AnyVenue (Proxy venue)
 
 allVenues :: [AnyVenue]
 allVenues =
    [ AnyVenue (Proxy :: Proxy "bitfinex")
    , AnyVenue (Proxy :: Proxy "bittrex")
 --   ,  AnyVenue (Proxy :: Proxy "binance")
---   , AnyVenue (Proxy :: Proxy "bitstamp")
+   , AnyVenue (Proxy :: Proxy "bitstamp")
 --   , AnyVenue (Proxy :: Proxy "gdax-l2")
 --   , AnyVenue (Proxy :: Proxy "gdax-l3")
    ]
 
-venueNames :: [(Text, AnyVenue)]
-!venueNames = map (\v@(AnyVenue p) -> (toS $ symbolVal p, v)) allVenues
+venueMap :: HM.HashMap Text AnyVenue
+!venueMap = HM.fromList $ map (\v@(AnyVenue p) -> (toS $ symbolVal p, v)) allVenues
+
+venueNames :: [Text]
+!venueNames = HM.keys venueMap
+
+venueLookup :: Text -> Maybe AnyVenue
+venueLookup = (`HM.lookup` venueMap)
