@@ -1,7 +1,7 @@
 module Orphans.OrderBook where
 
 import MyPrelude
-import Lib.OrderBook.Types          hiding (midPrice)
+import OrderBook.Types          hiding (midPrice)
 import qualified Money
 import qualified Test.QuickCheck    as QC
 import qualified Data.Vector        as Vec
@@ -97,12 +97,3 @@ instance QC.Arbitrary (Money.ExchangeRate src dst) where
     pure x
   shrink =
     catMaybes . fmap Money.exchangeRate . QC.shrink . Money.fromExchangeRate
-
-
-{-
-
-zeroQty :: Money.Dense currency
-zeroQty = fromMaybe (error msg) $ Money.dense 0
-   where msg = "zeroQty: 0 should be a valid quantity"
-
- -}

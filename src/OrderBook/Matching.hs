@@ -1,12 +1,11 @@
-module Lib.OrderBook.Matching where
+module OrderBook.Matching where
 
 import MyPrelude hiding (trace)
 import Debug.Trace (trace)
-import Lib.OrderBook.Types
+import OrderBook.Types
 import qualified Money
 import qualified Data.Vector as Vec
 import Text.Printf
-import GHC.TypeLits.List
 
 
 -- | Result of order match
@@ -41,10 +40,6 @@ addOrder MatchResult{..} o@Order{..} =
                (o : resOrders)
                resRes
 
---concat :: (KnownSymbol base, KnownSymbol quote)
---   => MatchResult base quote
---   -> MatchResult base quote
---   -> MatchResult base quote
 
 -- | Average execution price. 'Nothing' in case of zero, infinity or notANumber
 executionPrice :: MatchResult base quote -> Maybe (Money.ExchangeRate base quote)

@@ -1,18 +1,17 @@
 module Spec.Matching where
 
 import MyPrelude
-import Lib.OrderBook
+import OrderBook
 import Orphans.OrderBook (NonEmpty(..))
 import Test.Hspec -- .Core.Spec
 import qualified Money
 import qualified Test.QuickCheck    as QC
-import qualified Text.Show.Pretty   as P
+--import qualified Text.Show.Pretty   as P
 import qualified Test.Hspec.SmallCheck as SC
 import qualified Test.SmallCheck.Series as SS
 import Test.HUnit.Lang
 import Text.Printf
 import qualified Data.Vector  as Vec
---import Control.DeepSeq
 
 
 spec :: Spec
@@ -105,28 +104,7 @@ type TestOB = OrderBook "TestVenue" "BASE" "QUOTE"
 type TestOrder = Order "BASE" "QUOTE"
 type QuoteQty = Money.Dense "QUOTE"
 
-ssGen depth = SS.list depth SS.series
-
 assertEqArgs :: (Show a, Eq a) => SS.NonNegative Rational -> TestOB -> a -> a -> IO ()
 assertEqArgs (SS.NonNegative slip) ob = assertEqual $
    printf "Slippage: %.4g, Book: \n%s"
            (realToFrac slip :: Double) (show ob)
-
---withParams :: SS.Serial Identity a
---           => SS.Depth
---           -> (SS.Depth -> a -> TestOB -> IO ())
---           -> IO ()
---withParams maxDepth ioa =
---   forM_ [0..maxDepth] $ \depth ->
---      forM_ (ssGen depth) $ \ob ->
---         forM_ (ssGen depth) $ \slippage' ->
---            ioa depth slippage' ob
-
-{-
-
-assertEqArgs :: (Show a, Eq a) => Int -> SS.NonNegative Rational -> TestOB -> a -> a -> IO ()
-assertEqArgs depth (SS.NonNegative slip) ob = assertEqual $
-   printf "Depth: %d, Slippage: %.4g, Book: \n%s"
-           depth (realToFrac slip :: Double) (show ob)
-
- -}

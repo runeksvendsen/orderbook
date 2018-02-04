@@ -1,6 +1,6 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE RankNTypes #-}
-module Lib.OrderBook.Types
+module OrderBook.Types
 ( OrderBook(..)
 , SomeBook
 , mkSomeBook
@@ -19,7 +19,7 @@ import qualified Money
 --import Data.Vector hiding (null, concat)
 import qualified Data.Vector  as Vec
 import Text.Printf
-import qualified Text.Show.Pretty   as P
+--import qualified Text.Show.Pretty   as P
 import qualified Control.Category   as Cat
 
 
@@ -53,9 +53,6 @@ composeRem bc ab =
                      Order (fromRational $ abs diff) (oPrice ab))
 
 
---newtype BuySide  base quote = BuySide (Vector (BuyOrder  base quote))
---newtype SellSide base quote = SellSide (Vector (SellOrder base quote))
-
 data OrderBook (venue :: Symbol) (base :: Symbol) (quote :: Symbol) = OrderBook
    { obBids  :: Vector (Order base quote)
    , obAsks  :: Vector (Order base quote)
@@ -84,27 +81,6 @@ fromSomeBook SomeBook{..} =
    OrderBook (map fromSomeOrder sbBids)
              (map fromSomeOrder sbAsks)
 
-
-{-
--- | Create a 'SomeBook' only if all 'SomeOrder's have the same
---    'Money.someDenseCurrency' and 'Money.someExchangeRateSrcCurrency',
---    and if both bids and asks are non-empty
-
-
-withSomeBook
-   :: forall venue r.
-      KnownSymbol venue
-   => SomeBook venue
-   -> (forall base quote. (KnownSymbol base, KnownSymbol quote) => OrderBook venue base quote -> r)
-   -> r
-withSomeBook book f = let (base,quote) = soSrcDstCurrency . Vec.head . sbBids $ book in
-   case someSymbolVal base of
-      SomeSymbol baseP@(Proxy :: Proxy base) ->
-         case someSymbolVal quote of
-            SomeSymbol quoteP@(Proxy :: Proxy quote) ->
-               f (fromMaybe (error . toS $ "BUG: fromSomeBook failure: " ++ show (show . Vec.head . sbBids $ book, base, quote)) $
-                  fromSomeBook book :: OrderBook venue base quote)
--}
 
 data Order (base :: Symbol) (quote :: Symbol) = Order
    { oQuantity :: Money.Dense base
@@ -139,16 +115,6 @@ fromSomeOrder so@SomeOrder{..} = -- We know SomeOrder contains valid Dense/Excha
    let throwBug = error . toS $ "SomeOrder: invalid qty/price: " ++ show so in
    Order (fromMaybe throwBug $ Money.dense soQuantity)
          (fromMaybe throwBug $ Money.exchangeRate soPrice)
-
-{-
--- | Return src and dst currency (base and quote, respectively) for 'SomeOrder'
-soSrcDstCurrency :: SomeOrder -> (String,String)
-soSrcDstCurrency SomeOrder{..} =
-   ( Money.someExchangeRateSrcCurrency soPrice
-   , Money.someExchangeRateDstCurrency soPrice
-   )
-
--}
 
 instance Ord (Order base quote) where
    o1 <= o2 = oPrice o1 <= oPrice o2
@@ -197,18 +163,6 @@ showOrder name Order{..} =
 
 instance (KnownSymbol base, KnownSymbol quote) => Show (Order base quote) where
    show = showOrder "Order"
-
---instance (KnownSymbol base, KnownSymbol quote) => Show [Order base quote] where
---   show = concat . fmap (showOrder "Order")
-
---instance (KnownSymbol base, KnownSymbol quote) => Show (BuyOrder base quote) where
---   show = showOrder "BUY " . buyOrder
-
---instance (KnownSymbol base, KnownSymbol quote) => Show (SellOrder base quote) where
---   show = showOrder "SELL" . sellOrder
-
---instance KnownSymbol venue => Show (SomeBook venue) where
---   show sb = withSomeBook sb show
 
 instance (KnownSymbol venue, KnownSymbol base, KnownSymbol quote) =>
             Show (OrderBook venue base quote) where

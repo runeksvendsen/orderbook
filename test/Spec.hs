@@ -1,26 +1,18 @@
 import MyPrelude
 
 import qualified Spec.Matching      as Matching
---import qualified Spec.Str2Int       as StrSpec
-import qualified Spec.MarketString  as MarketStr
-import Lib.OrderBook.Types
+--import OrderBook.Types
 
 import Test.Tasty
 import Test.Tasty.SmallCheck  as SC
-import Test.Hspec             as HS
+--import Test.Hspec             as HS
 import Test.Hspec.Runner
-
--- TMP
-import Lib.Markets.Types
-import Orphans.Market
-import qualified Test.SmallCheck.Series as SS
-
 
 
 scDepth = 6
 
 main = do
-   hspecWith defaultConfig { configSmallCheckDepth = scDepth } MarketStr.spec2
+   hspecWith defaultConfig { configSmallCheckDepth = scDepth } Matching.spec
    defaultMain properties
 
 properties :: TestTree
