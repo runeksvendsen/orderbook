@@ -122,7 +122,7 @@ instance Ord (Order base quote) where
 data AnyBook venue = forall base quote.
    ( KnownSymbol venue
    , KnownSymbol base
-   , KnownSymbol quote)
+   , KnownSymbol quote )
      => AnyBook (OrderBook venue base quote)
 
 
