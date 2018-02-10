@@ -12,7 +12,7 @@ import Test.Hspec.Runner
 scDepth = 5
 
 main = do
-   hspecWith defaultConfig { configSmallCheckDepth = scDepth } Matching.spec
+--   hspecWith defaultConfig { configSmallCheckDepth = scDepth } Matching.spec
    defaultMain properties
 
 properties :: TestTree

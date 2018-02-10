@@ -184,6 +184,9 @@ instance (KnownSymbol venue, KnownSymbol base, KnownSymbol quote) =>
                   <> bidIndent <> intercalate bidIndent (Vec.toList $ fmap (showOrder "BUY ") obBids)
       in printf template venue currPair midPriceStr orders
 
+instance Show (AnyBook venue) where
+   show (AnyBook ob) = show ob
+
 instance (KnownSymbol venue, KnownSymbol base, KnownSymbol quote) =>
             Print (OrderBook venue base quote) where
    putStr ob = putStr (toS $ show ob :: Text)

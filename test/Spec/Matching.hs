@@ -15,7 +15,7 @@ import qualified Data.Vector  as Vec
 
 
 spec :: Spec
-spec = do
+spec = parallel $ do
    describe "market order by slippage" $ do
       it "SELL has same MatchResult as by quote quantity" $
          SC.property $ \slippage' ob ->
