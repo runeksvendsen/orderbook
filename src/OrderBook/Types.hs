@@ -112,7 +112,7 @@ fromSomeOrder
    => SomeOrder
    -> Order base quote
 fromSomeOrder so@SomeOrder{..} = -- We know SomeOrder contains valid Dense/ExchangeRate
-   let throwBug = error . toS $ "SomeOrder: invalid qty/price: " ++ show so in
+   let throwBug = error $ "SomeOrder: invalid qty/price: " ++ show so in
    Order (fromMaybe throwBug $ Money.dense soQuantity)
          (fromMaybe throwBug $ Money.exchangeRate soPrice)
 
@@ -137,7 +137,7 @@ midPrice OrderBook{..} =
    let rationalPrice = Money.fromExchangeRate . oPrice
        ~bestBid = obBids Vec.! 0
        ~bestAsk = obAsks Vec.! 0
-       unsafeConv r = fromMaybe (error . toS $ "Bad midPrice: " <> show (r,bestBid,bestAsk))
+       unsafeConv r = fromMaybe (error $ "Bad midPrice: " <> show (r,bestBid,bestAsk))
                                 (Money.exchangeRate r)
    in
    if null obBids || null obAsks
