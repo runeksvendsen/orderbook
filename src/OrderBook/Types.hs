@@ -58,6 +58,8 @@ data OrderBook (venue :: Symbol) (base :: Symbol) (quote :: Symbol) = OrderBook
    , obAsks  :: Vector (Order base quote)
    } deriving (Eq, Generic)
 
+instance NFData (OrderBook venue base quote)
+
 data SomeBook (venue :: Symbol) = SomeBook
    { sbBids  :: Vector SomeOrder
    , sbAsks  :: Vector SomeOrder
@@ -119,12 +121,13 @@ fromSomeOrder so@SomeOrder{..} = -- We know SomeOrder contains valid Dense/Excha
 instance Ord (Order base quote) where
    o1 <= o2 = oPrice o1 <= oPrice o2
 
+instance NFData (Order base quote)
+
 data AnyBook venue = forall base quote.
    ( KnownSymbol venue
    , KnownSymbol base
    , KnownSymbol quote )
      => AnyBook (OrderBook venue base quote)
-
 
 -- | Order book mid price (Nothing in case there are no bids and/or asks).
 --   Will fail horribly if bestBidPrice+bestAskPrice equals zero
@@ -186,6 +189,9 @@ instance (KnownSymbol venue, KnownSymbol base, KnownSymbol quote) =>
 
 instance Show (AnyBook venue) where
    show (AnyBook ob) = show ob
+
+instance NFData (AnyBook venue) where
+   rnf (AnyBook ob) = rnf ob
 
 instance (KnownSymbol venue, KnownSymbol base, KnownSymbol quote) =>
             Print (OrderBook venue base quote) where
