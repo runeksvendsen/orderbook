@@ -69,11 +69,7 @@ mkSomeBook
    :: Vector SomeOrder  -- ^ Buy orders (bids)
    -> Vector SomeOrder  -- ^ Sell orders (asks)
    -> Either String (SomeBook venue)
-mkSomeBook bids asks
-   | null bids = Left "No bids"
-   | null asks = Left "No asks"
-   | otherwise = Right $ SomeBook bids asks
-
+mkSomeBook bids = Right . SomeBook bids
 
 fromSomeBook
    :: (KnownSymbol venue, KnownSymbol base, KnownSymbol quote)
