@@ -61,16 +61,16 @@ newtype BuySide (venue :: Symbol) (base :: Symbol) (quote :: Symbol)
    = BuySide { buySide :: Vector (Order base quote) }
       deriving (Eq, Generic, Show)
 
-bestBid :: OrderBook venue base quote -> Order base quote
-bestBid = (Vec.! 0) . buySide . obBids
+bestBid :: OrderBook venue base quote -> Maybe (Order base quote)
+bestBid = (Vec.!? 0) . buySide . obBids
 
 -- | Sellers want to convert "base" to "quote"
 newtype SellSide (venue :: Symbol) (base :: Symbol) (quote :: Symbol)
    = SellSide { sellSide :: Vector (Order base quote) }
       deriving (Eq, Generic, Show)
 
-bestAsk :: OrderBook venue base quote -> Order base quote
-bestAsk = (Vec.! 0) . sellSide . obAsks
+bestAsk :: OrderBook venue base quote -> Maybe (Order base quote)
+bestAsk = (Vec.!? 0) . sellSide . obAsks
 
 class OrderbookSide a where
     isEmpty :: a -> Bool
@@ -165,11 +165,11 @@ midPrice ob@OrderBook{..} =
    let rationalPrice = Money.fromExchangeRate . oPrice
        unsafeConv r = fromMaybe (error $ "Bad midPrice: " <> show (r,bestBid ob,bestAsk ob))
                                 (Money.exchangeRate r)
-   in
-   if isEmpty obBids || isEmpty obAsks
-      then Nothing
-      else Just . unsafeConv $ ( rationalPrice (bestBid ob)
-                               + rationalPrice (bestAsk ob) ) / 2
+   in do
+      bb <- bestBid ob
+      ba <- bestAsk ob
+      return . unsafeConv $ ( rationalPrice bb
+                            + rationalPrice ba ) / 2
 
 showOrder :: forall base quote.
              (KnownSymbol base, KnownSymbol quote)
