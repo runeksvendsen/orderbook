@@ -1,7 +1,10 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE TypeOperators #-}
 module OrderBook.Types
 ( OrderBook(..)
+, BuySide, buySide
+, SellSide, sellSide
 , SomeBook
 , mkSomeBook
 , fromSomeBook
@@ -53,11 +56,37 @@ composeRem bc ab =
                      Order (fromRational $ abs diff) (oPrice ab))
 
 
+-- | Buyers want to convert "quote" to "base"
+newtype BuySide (venue :: Symbol) (base :: Symbol) (quote :: Symbol)
+   = BuySide { buySide :: Vector (Order base quote) }
+      deriving (Eq, Generic, Show)
+
+bestBid :: OrderBook venue base quote -> Order base quote
+bestBid = (Vec.! 0) . buySide . obBids
+
+-- | Sellers want to convert "base" to "quote"
+newtype SellSide (venue :: Symbol) (base :: Symbol) (quote :: Symbol)
+   = SellSide { sellSide :: Vector (Order base quote) }
+      deriving (Eq, Generic, Show)
+
+bestAsk :: OrderBook venue base quote -> Order base quote
+bestAsk = (Vec.! 0) . sellSide . obAsks
+
+class OrderbookSide a where
+    isEmpty :: a -> Bool
+instance OrderbookSide (BuySide venue base quote) where   
+    isEmpty = null . buySide
+instance OrderbookSide (SellSide venue base quote) where   
+    isEmpty = null . sellSide
+
+
 data OrderBook (venue :: Symbol) (base :: Symbol) (quote :: Symbol) = OrderBook
-   { obBids  :: Vector (Order base quote)
-   , obAsks  :: Vector (Order base quote)
+   { obBids  :: BuySide venue base quote
+   , obAsks  :: SellSide venue base quote
    } deriving (Eq, Generic)
 
+instance NFData (BuySide venue base quote)
+instance NFData (SellSide venue base quote)
 instance NFData (OrderBook venue base quote)
 
 data SomeBook (venue :: Symbol) = SomeBook
@@ -76,8 +105,8 @@ fromSomeBook
    => SomeBook venue
    -> OrderBook venue base quote
 fromSomeBook SomeBook{..} =
-   OrderBook (map fromSomeOrder sbBids)
-             (map fromSomeOrder sbAsks)
+   OrderBook (BuySide $ map fromSomeOrder sbBids)
+             (SellSide $ map fromSomeOrder sbAsks)
 
 
 data Order (base :: Symbol) (quote :: Symbol) = Order
@@ -132,17 +161,15 @@ midPrice :: forall venue base quote.
             (KnownSymbol base, KnownSymbol quote)
          => OrderBook venue base quote
          -> Maybe (Money.ExchangeRate base quote)
-midPrice OrderBook{..} =
+midPrice ob@OrderBook{..} =
    let rationalPrice = Money.fromExchangeRate . oPrice
-       ~bestBid = obBids Vec.! 0
-       ~bestAsk = obAsks Vec.! 0
-       unsafeConv r = fromMaybe (error $ "Bad midPrice: " <> show (r,bestBid,bestAsk))
+       unsafeConv r = fromMaybe (error $ "Bad midPrice: " <> show (r,bestBid ob,bestAsk ob))
                                 (Money.exchangeRate r)
    in
-   if null obBids || null obAsks
+   if isEmpty obBids || isEmpty obAsks
       then Nothing
-      else Just . unsafeConv $ ( rationalPrice bestBid
-                               + rationalPrice bestAsk ) / 2
+      else Just . unsafeConv $ ( rationalPrice (bestBid ob)
+                               + rationalPrice (bestAsk ob) ) / 2
 
 showOrder :: forall base quote.
              (KnownSymbol base, KnownSymbol quote)
@@ -179,8 +206,8 @@ instance (KnownSymbol venue, KnownSymbol base, KnownSymbol quote) =>
          midPriceStr = case midPriceF of
                         Nothing -> "<no bids/asks>"
                         Just price -> printf "%.4f" price
-         orders =    askIndent <> intercalate askIndent (showOrder "SELL" <$> sortDesc (Vec.toList obAsks))
-                  <> bidIndent <> intercalate bidIndent (Vec.toList $ fmap (showOrder "BUY ") obBids)
+         orders =    askIndent <> intercalate askIndent (showOrder "SELL" <$> sortDesc (Vec.toList $ sellSide obAsks))
+                  <> bidIndent <> intercalate bidIndent (Vec.toList $ fmap (showOrder "BUY ") $ buySide obBids)
       in printf template venue currPair midPriceStr orders
 
 instance Show (AnyBook venue) where
