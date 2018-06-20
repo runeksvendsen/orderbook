@@ -3,8 +3,8 @@
 {-# LANGUAGE TypeOperators #-}
 module OrderBook.Types
 ( OrderBook(..)
-, BuySide, buySide, bestBid
-, SellSide, sellSide, bestAsk
+, BuySide(..), buySide, bestBid
+, SellSide(..), sellSide, bestAsk
 , isEmpty
 , SomeBook
 , mkSomeBook
