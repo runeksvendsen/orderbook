@@ -5,6 +5,7 @@ module OrderBook.Types
 ( OrderBook(..)
 , BuySide(..), buySide, bestBid
 , SellSide(..), sellSide, bestAsk
+, SellOrders(..), BuyOrders(..)
 , isEmpty
 , SomeBook
 , mkSomeBook
@@ -60,7 +61,7 @@ composeRem bc ab =
 -- | Buyers want to convert "quote" to "base"
 newtype BuySide (venue :: Symbol) (base :: Symbol) (quote :: Symbol)
    = BuySide { buySide :: Vector (Order base quote) }
-      deriving (Eq, Generic, Show)
+      deriving (Eq, Generic)
 
 bestBid :: OrderBook venue base quote -> Maybe (Order base quote)
 bestBid = (Vec.!? 0) . buySide . obBids
@@ -68,7 +69,7 @@ bestBid = (Vec.!? 0) . buySide . obBids
 -- | Sellers want to convert "base" to "quote"
 newtype SellSide (venue :: Symbol) (base :: Symbol) (quote :: Symbol)
    = SellSide { sellSide :: Vector (Order base quote) }
-      deriving (Eq, Generic, Show)
+      deriving (Eq, Generic)
 
 bestAsk :: OrderBook venue base quote -> Maybe (Order base quote)
 bestAsk = (Vec.!? 0) . sellSide . obAsks
@@ -89,6 +90,18 @@ data OrderBook (venue :: Symbol) (base :: Symbol) (quote :: Symbol) = OrderBook
 instance NFData (BuySide venue base quote)
 instance NFData (SellSide venue base quote)
 instance NFData (OrderBook venue base quote)
+
+class SellOrders a (base :: Symbol) (quote :: Symbol) where
+    sellOrders :: a base quote -> Vector (Order base quote)
+
+class BuyOrders a (base :: Symbol) (quote :: Symbol) where
+    buyOrders :: a base quote -> Vector (Order base quote)
+
+instance SellOrders (SellSide venue) base quote where sellOrders = sellSide
+instance SellOrders (OrderBook venue) base quote where sellOrders = sellSide . obAsks
+
+instance BuyOrders (BuySide venue) base quote where buyOrders = buySide
+instance BuyOrders (OrderBook venue) base quote where buyOrders = buySide . obBids
 
 data SomeBook (venue :: Symbol) = SomeBook
    { sbBids  :: Vector SomeOrder

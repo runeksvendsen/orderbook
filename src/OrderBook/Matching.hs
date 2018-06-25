@@ -104,19 +104,19 @@ _slippageOrder orders targetSlip =
          finalQty = abs $ (targetPrice*toRational resBaseQty - toRational resQuoteQty) /
                           (Money.fromExchangeRate oPrice - targetPrice)
 
-slippageSell :: forall base quote venue.
-                (KnownSymbol base, KnownSymbol quote)
-             => OrderBook venue base quote   -- ^ Order book
+slippageSell :: forall base quote venue bo.
+                (KnownSymbol base, KnownSymbol quote, BuyOrders bo base quote)
+             => bo base quote                -- ^ Orders
              -> Rational                     -- ^ Desired slippage (in percent) (must be positive)
              -> MatchResult base quote       -- ^ Matched buy orders
-slippageSell book slip = _slippageOrder (buySide $ obBids book) (-1 * slip)
+slippageSell bo slip = _slippageOrder (buyOrders bo) (-1 * slip)
 
-slippageBuy :: forall base quote venue.
-               (KnownSymbol base, KnownSymbol quote)
-            => OrderBook venue base quote -- ^ Order book
+slippageBuy :: forall base quote venue so.
+               (KnownSymbol base, KnownSymbol quote, SellOrders so base quote)
+            => so base quote              -- ^ Orders
             -> Rational                   -- ^ Desired slippage (in percent) (must be positive)
             -> MatchResult base quote     -- ^ Matched sell orders
-slippageBuy book = _slippageOrder (sellSide $ obAsks book)
+slippageBuy so = _slippageOrder (sellOrders so)
 
 instance (KnownSymbol base, KnownSymbol quote) => Show (MatchResult base quote) where
    show mr@MatchResult{..} =
