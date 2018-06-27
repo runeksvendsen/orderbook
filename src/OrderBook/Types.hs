@@ -21,28 +21,55 @@ where
 
 import MyPrelude
 import qualified Money
---import Data.Vector hiding (null, concat)
 import qualified Data.Vector  as Vec
 import Text.Printf
---import qualified Text.Show.Pretty   as P
 import qualified Control.Category   as Cat
 
 
--- ETH/BTC . BTC/USD
---------------------
--- USD -> BTC -> ETH
--- ETH -> BTC -> USD
+-- | Buyers want to convert "quote" to "base"
+newtype BuySide (venue :: Symbol) (base :: Symbol) (quote :: Symbol)
+   = BuySide { buySide :: Vector (Order base quote) }
+      deriving (Eq, Generic)
 
--- BuySide  ETH BTC . BuySide  BTC USD    (Buy  BTC for USD -> Buy  ETH for BTC)
--- SellSide BTC USD . SellSide ETH BTC    (Sell ETH for BTC -> Sell BTC for USD)
+-- | Sellers want to convert "base" to "quote"
+newtype SellSide (venue :: Symbol) (base :: Symbol) (quote :: Symbol)
+   = SellSide { sellSide :: Vector (Order base quote) }
+      deriving (Eq, Generic)
 
-instance Cat.Category Order where
-   id = Order (fromRational pseudoInf) Cat.id
-      where pseudoInf = fromIntegral (maxBound :: Int64) % 1
-   o1 . o2 = Order (fromRational minQty) (oPrice o1 Cat.. oPrice o2)
-      where minQty = min (toRational $ oQuantity o1) (toRational $ oQuantity o2)
+bestBid :: OrderBook venue base quote -> Maybe (Order base quote)
+bestBid = (Vec.!? 0) . buySide . obBids
 
--- | The result of composing two orders, plus the remainder
+bestAsk :: OrderBook venue base quote -> Maybe (Order base quote)
+bestAsk = (Vec.!? 0) . sellSide . obAsks
+
+instance Cat.Category (BuySide venue) where
+   id = BuySide (Vec.fromList $ repeat largeQtyIdOrder)
+   (BuySide b1) . (BuySide b2) = BuySide $ Vec.fromList orders
+      where orders = composeLst (Vec.toList b1) (Vec.toList b2)
+
+instance Cat.Category (SellSide venue) where
+   id = SellSide (Vec.fromList $ repeat largeQtyIdOrder)
+   (SellSide b1) . (SellSide b2) = SellSide $ Vec.fromList orders
+      where orders = composeLst (Vec.toList b1) (Vec.toList b2)
+
+-- | Compose two lists of orders
+composeLst
+    :: [Order b c]
+    -> [Order a b]
+    -> [Order a c]
+composeLst bcL =
+    reverse . composeLstR [] bcL
+  where
+    composeLstR accum bcL@(bc:bcs) abL@(ab:abs)
+        | null bcL || null abL = accum
+        | otherwise =
+            let (ac, rem) = composeRem bc ab
+                toPair Nothing              = (bcs, abs)
+                toPair (Just (Left  bcRem)) = (bcRem : bcs, abs)
+                toPair (Just (Right abRem)) = (bcs, abRem : abs)
+            in composeLstR (ac : accum) `uncurry` toPair rem
+
+-- | The result of composing two orders, plus the remainder (if any)
 composeRem :: Order b c
            -> Order a b
            -> (Order a c, Maybe (Either (Order b c) (Order a b)))
@@ -51,29 +78,22 @@ composeRem bc ab =
    where
    price = oPrice bc Cat.. oPrice ab
    fromDiff diff
+      -- No remainder (order quantities are equal)
       | diff == 0 = (Order (oQuantity ab) price, Nothing)
+      -- Remainder of type "Order b c" ("Order a b" quantity is less than that of "Order b c")
       | diff >  0 = (Order (oQuantity ab) price, Just . Left $
                      Order (fromRational diff) (oPrice bc))
+      -- Remainder of type "Order a b" ("Order b c" quantity is less than that of "Order a b")
       | diff <  0 = (Order (fromRational . toRational $ oQuantity bc) price, Just . Right $
                      Order (fromRational $ abs diff) (oPrice ab))
 
+largeQtyIdOrder :: Order base base
+largeQtyIdOrder =
+    Order (fromRational pseudoInf) Cat.id
+  where
+    pseudoInf = fromIntegral (maxBound :: Int64) % 1
 
--- | Buyers want to convert "quote" to "base"
-newtype BuySide (venue :: Symbol) (base :: Symbol) (quote :: Symbol)
-   = BuySide { buySide :: Vector (Order base quote) }
-      deriving (Eq, Generic)
-
-bestBid :: OrderBook venue base quote -> Maybe (Order base quote)
-bestBid = (Vec.!? 0) . buySide . obBids
-
--- | Sellers want to convert "base" to "quote"
-newtype SellSide (venue :: Symbol) (base :: Symbol) (quote :: Symbol)
-   = SellSide { sellSide :: Vector (Order base quote) }
-      deriving (Eq, Generic)
-
-bestAsk :: OrderBook venue base quote -> Maybe (Order base quote)
-bestAsk = (Vec.!? 0) . sellSide . obAsks
-
+-- TODO: figure out something smarter
 class OrderbookSide a where
     isEmpty :: a -> Bool
 instance OrderbookSide (BuySide venue base quote) where   
@@ -102,6 +122,7 @@ instance SellOrders (OrderBook venue) base quote where sellOrders = sellSide . o
 
 instance BuyOrders (BuySide venue) base quote where buyOrders = buySide
 instance BuyOrders (OrderBook venue) base quote where buyOrders = buySide . obBids
+
 
 data SomeBook (venue :: Symbol) = SomeBook
    { sbBids  :: Vector SomeOrder
