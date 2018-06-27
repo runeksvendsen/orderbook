@@ -93,14 +93,17 @@ largeQtyIdOrder =
   where
     pseudoInf = fromIntegral (maxBound :: Int64) % 1
 
--- TODO: figure out something smarter
-class OrderbookSide a where
-    isEmpty :: a -> Bool
-instance OrderbookSide (BuySide venue base quote) where   
-    isEmpty = null . buySide
-instance OrderbookSide (SellSide venue base quote) where   
-    isEmpty = null . sellSide
+class OrderbookSide a (base :: Symbol) (quote :: Symbol) where
+    isEmpty  :: a base quote -> Bool                -- ^ No orders?
+    totalQty :: a base quote -> Money.Dense base    -- ^ Total order quantity
 
+instance OrderbookSide (BuySide venue) base quote where   
+    isEmpty = null . buySide
+    totalQty = sum . map oQuantity . Vec.toList . buySide
+
+instance OrderbookSide (SellSide venue) base quote where   
+    isEmpty = null . sellSide
+    totalQty = sum . map oQuantity . Vec.toList . sellSide
 
 data OrderBook (venue :: Symbol) (base :: Symbol) (quote :: Symbol) = OrderBook
    { obBids  :: BuySide venue base quote
