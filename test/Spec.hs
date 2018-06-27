@@ -1,18 +1,18 @@
 import MyPrelude
 
 import qualified Spec.Matching      as Matching
---import OrderBook.Types
+import qualified Spec.Composition   as Composition
 
 import Test.Tasty
 import Test.Tasty.SmallCheck  as SC
---import Test.Hspec             as HS
 import Test.Hspec.Runner
 
 
 scDepth = 5
 
 main = do
---   hspecWith defaultConfig { configSmallCheckDepth = scDepth } Matching.spec
+   hspecWith defaultConfig { configSmallCheckDepth = scDepth } Matching.spec
+   hspecWith defaultConfig { configSmallCheckDepth = scDepth } Composition.spec
    defaultMain properties
 
 properties :: TestTree
