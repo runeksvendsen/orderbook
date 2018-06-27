@@ -4,13 +4,13 @@ github:              "runeksvendsen/orderbook"
 license:             BSD3
 author:              "Rune K. Svendsen"
 maintainer:          "example@example.com"
-copyright:           "2017 Author name here"
+copyright:           "2018 Rune K. Svendsen"
 
 extra-source-files:
 - README.md
 
 # Metadata used when publishing your package
-synopsis:            Short description of your package
+synopsis:            Type safe orderbook
 # category:            Web
 
 # To avoid duplicated efforts in documentation and dealing with the
@@ -41,8 +41,6 @@ dependencies:
 - protolude
 - safe-money      >= 0.4.1  && < 0.5
 - vector
-#- bytestring
-#- scientific
 - text
 
 library:
