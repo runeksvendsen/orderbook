@@ -111,6 +111,11 @@ instance NFData (BuySide venue base quote)
 instance NFData (SellSide venue base quote)
 instance NFData (OrderBook venue base quote)
 
+instance Cat.Category (OrderBook venue) where
+   id = OrderBook Cat.id Cat.id
+   (OrderBook b1 s1) . (OrderBook b2 s2) =
+        OrderBook (b1 Cat.. b2) (s1 Cat.. s2)
+
 class SellOrders a (base :: Symbol) (quote :: Symbol) where
     sellOrders :: a base quote -> Vector (Order base quote)
 
