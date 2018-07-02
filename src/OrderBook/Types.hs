@@ -6,7 +6,7 @@ module OrderBook.Types
 , BuySide(..), buySide, bestBid
 , SellSide(..), sellSide, bestAsk
 , SellOrders(..), BuyOrders(..)
-, isEmpty
+, OrderbookSide(..)
 , SomeBook
 , mkSomeBook
 , fromSomeBook
@@ -16,6 +16,9 @@ module OrderBook.Types
 , mkSomeOrder
 , fromOrder
 , midPrice
+, showOrders
+  -- * Test
+, composeRem
 )
 where
 
@@ -60,36 +63,37 @@ composeLst
 composeLst bcL =
     reverse . composeLstR [] bcL
   where
-    composeLstR accum bcL@(bc:bcs) abL@(ab:abs)
-        | null bcL || null abL = accum
-        | otherwise =
-            let (ac, rem) = composeRem bc ab
-                toPair Nothing              = (bcs, abs)
-                toPair (Just (Left  bcRem)) = (bcRem : bcs, abs)
-                toPair (Just (Right abRem)) = (bcs, abRem : abs)
-            in composeLstR (ac : accum) `uncurry` toPair rem
+    composeLstR accum [] _ = accum
+    composeLstR accum _ [] = accum
+    composeLstR accum (bc:bcs) (ab:abs) =
+        let (ac, rem) = composeRem bc ab
+            toPair Nothing              = (bcs, abs)
+            toPair (Just (Left  bcRem)) = (bcRem : bcs, abs)
+            toPair (Just (Right abRem)) = (bcs, abRem : abs)
+        in composeLstR (ac : accum) `uncurry` toPair rem
 
 -- | The result of composing two orders, plus the remainder (if any)
 composeRem :: Order b c
            -> Order a b
            -> (Order a c, Maybe (Either (Order b c) (Order a b)))
 composeRem bc ab =
-   fromDiff $ toRational (oQuantity bc) - toRational (oQuantity ab)
+   fromDiff $ qtyBC `compare` qtyAB
    where
    price = oPrice bc Cat.. oPrice ab
-   fromDiff diff
-      -- No remainder (order quantities are equal)
-      | diff == 0 = (Order (oQuantity ab) price, Nothing)
-      -- Remainder of type "Order b c" ("Order a b" quantity is less than that of "Order b c")
-      | diff >  0 = (Order (oQuantity ab) price, Just . Left $
-                     Order (fromRational diff) (oPrice bc))
-      -- Remainder of type "Order a b" ("Order b c" quantity is less than that of "Order a b")
-      | diff <  0 = (Order (fromRational . toRational $ oQuantity bc) price, Just . Right $
-                     Order (fromRational $ abs diff) (oPrice ab))
+   qtyAB = toRational (oQuantity ab)
+   qtyBC = toRational (oQuantity bc)
+   -- No remainder ("Order a b" quantity is equal to that of "Order b c")
+   fromDiff EQ = (Order (oQuantity ab) price, Nothing)
+   -- Remainder of type "Order b c" ("Order b c" quantity is greater than that of "Order a b")
+   fromDiff GT = (Order (oQuantity ab) price, Just . Left $
+                  Order (Money.dense' $ qtyBC-qtyAB) (oPrice bc))
+   -- Remainder of type "Order a b" ("Order b c" quantity is less than that of "Order a b")
+   fromDiff LT = (Order (Money.dense' . toRational $ oQuantity bc) price, Just . Right $
+                  Order (Money.dense' $ qtyAB-qtyBC) (oPrice ab))
 
 largeQtyIdOrder :: Order base base
 largeQtyIdOrder =
-    Order (fromRational pseudoInf) Cat.id
+    Order (Money.dense' pseudoInf) Cat.id
   where
     pseudoInf = fromIntegral (maxBound :: Int64) % 1
 
@@ -168,14 +172,14 @@ mkSomeOrder :: Rational    -- ^ Quantity
             -> Maybe SomeOrder
 mkSomeOrder qty price =
    SomeOrder <$> fmap toRational (Money.dense qty)
-             <*> fmap Money.fromExchangeRate (Money.exchangeRate price)
+             <*> fmap Money.exchangeRateToRational (Money.exchangeRate price)
 
 fromOrder
    :: Order base quote
    -> SomeOrder
 fromOrder Order{..} =
    SomeOrder (toRational oQuantity)
-             (Money.fromExchangeRate oPrice)
+             (Money.exchangeRateToRational oPrice)
 
 fromSomeOrder
    :: (KnownSymbol base, KnownSymbol quote)
@@ -205,7 +209,7 @@ midPrice :: forall venue base quote.
          => OrderBook venue base quote
          -> Maybe (Money.ExchangeRate base quote)
 midPrice ob@OrderBook{..} =
-   let rationalPrice = Money.fromExchangeRate . oPrice
+   let rationalPrice = Money.exchangeRateToRational . oPrice
        unsafeConv r = fromMaybe (error $ "Bad midPrice: " <> show (r,bestBid ob,bestAsk ob))
                                 (Money.exchangeRate r)
    in do
@@ -217,41 +221,79 @@ midPrice ob@OrderBook{..} =
 showOrder :: forall base quote.
              (KnownSymbol base, KnownSymbol quote)
           => String
+          -> Maybe (Money.Dense base, Money.Dense quote)
           -> Order base quote
           -> String
-showOrder name Order{..} =
+showOrder name cumVolM Order{..} =
    let
-      template = "[%s: %.4f %s @ %.4f %s/%s]"
+      template =  "[%s: %.4f%s @ %.4f %s/%s%s"
       baseS = symbolVal (Proxy :: Proxy base)
       quoteS = symbolVal (Proxy :: Proxy quote)
       doublePrice :: Double
-      doublePrice = realToFrac . Money.fromExchangeRate $ oPrice
+      doublePrice = realToFrac . Money.exchangeRateToRational $ oPrice
       doubleQty :: Double
       doubleQty = realToFrac oQuantity
-   in printf template name doubleQty baseS doublePrice quoteS baseS
+      mkCumVol (baseV, quoteV) = printf " (cum. %.4f%s/%.4f%s)]" 
+                                   (realToFrac baseV :: Double) baseS
+                                   (realToFrac quoteV :: Double) quoteS
+      maybeVol :: String
+      maybeVol = maybe "]" mkCumVol cumVolM
+   in printf template name doubleQty baseS doublePrice quoteS baseS maybeVol
 
 instance (KnownSymbol base, KnownSymbol quote) => Show (Order base quote) where
-   show = showOrder "Order"
+   show = showOrder "Order" Nothing
 
 instance (KnownSymbol venue, KnownSymbol base, KnownSymbol quote) =>
             Show (OrderBook venue base quote) where
    show ob@OrderBook{..} =
       let
-         template = "<Order book: %s %s, mid price: %s, orders: %s>"
+         template = "\n<Order book: %s %s, mid price: %s, orders: %s>"
          venue = symbolVal (Proxy :: Proxy venue)
          currPair = symbolVal (Proxy :: Proxy base) <> "/" <> symbolVal (Proxy :: Proxy quote)
          midPriceF :: Maybe Double
-         midPriceF = realToFrac . Money.fromExchangeRate <$> midPrice ob
-         sortDesc = sortBy (flip compare)
+         midPriceF = realToFrac . Money.exchangeRateToRational <$> midPrice ob
          askIndent = ("\n\t" <> replicate 40 ' ')
          bidIndent = "\n\t"
          midPriceStr :: String
          midPriceStr = case midPriceF of
                         Nothing -> "<no bids/asks>"
                         Just price -> printf "%.4f" price
-         orders =    askIndent <> intercalate askIndent (showOrder "SELL" <$> sortDesc (Vec.toList $ sellSide obAsks))
-                  <> bidIndent <> intercalate bidIndent (Vec.toList $ fmap (showOrder "BUY ") $ buySide obBids)
+         orders =    askIndent <> intercalate askIndent (lines $ show obAsks)
+                  <> bidIndent <> intercalate bidIndent (lines $ show obBids)
       in printf template venue currPair midPriceStr orders
+
+instance (KnownSymbol venue, KnownSymbol base, KnownSymbol quote) =>
+            Show (SellSide venue base quote) where
+   show SellSide{..} = 
+        unlines . showOrders "SELL" . Vec.toList $ sellSide
+
+instance (KnownSymbol venue, KnownSymbol base, KnownSymbol quote) =>
+            Show (BuySide venue base quote) where
+   show BuySide{..} = 
+        unlines . reverse . showOrders "BUY" . Vec.toList $ buySide
+
+showOrders
+    :: (KnownSymbol base, KnownSymbol quote) 
+    => String                       -- ^ Prefix (e.g. "Sell", "Buy")
+    -> [Order base quote]    -- ^ Orders
+    -> [String]                     -- ^ One string per line of output
+showOrders prefix orders = fst $ 
+    foldl' (countVol prefix) 
+           ([], (Money.dense' 0, Money.dense' 0))  
+           orders
+
+-- Helper function for "instance Show BuySide/SellSide"
+countVol :: (KnownSymbol base, KnownSymbol quote)
+         => String
+         -> ([String], (Money.Dense base, Money.Dense quote))
+         -> Order base quote 
+         -> ([String], (Money.Dense base, Money.Dense quote))
+countVol prefix (strL, (cumVolB, cumVolQ)) o@Order{..} = 
+    let newVolB = cumVolB+oQuantity 
+        newVolQ = cumVolQ+Money.exchange oPrice oQuantity
+    in ( showOrder prefix (Just (newVolB,newVolQ)) o : strL
+       , (newVolB, newVolQ)
+       )
 
 instance Show (AnyBook venue) where
    show (AnyBook ob) = show ob

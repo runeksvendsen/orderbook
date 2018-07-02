@@ -1,13 +1,14 @@
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module Orphans.OrderBook where
 
-import MyPrelude
-import OrderBook.Types          hiding (midPrice)
+import MyPrelude                    hiding (NonEmpty)
+import OrderBook.Types              hiding (midPrice)
 import qualified Money
 import qualified Test.QuickCheck    as QC
 import qualified Data.Vector        as Vec
 import Test.SmallCheck.Series       hiding (NonEmpty)
 import qualified Test.SmallCheck.Series as SS
-import Data.Ord
+-- import Data.Ord
 
 
 suchThat :: Series m a -> (a -> Bool) -> Series m a
@@ -27,8 +28,8 @@ instance (KnownSymbol base, KnownSymbol quote, Monad m) =>
          depth <- getDepth
          let buyOrders  = SS.list depth $ SS.series `suchThat` buyOrderProp
              sellOrders = SS.list depth $ SS.series `suchThat` sellOrderProp
-         return $ OrderBook (Vec.fromList $ sortBy (comparing Down) buyOrders)
-                            (Vec.fromList $ sort sellOrders)
+         return $ OrderBook (BuySide . Vec.fromList $ sortBy (comparing Down) buyOrders)
+                            (SellSide . Vec.fromList $ sort sellOrders)
 
 newtype NonEmpty a = NonEmpty a deriving (Eq, Show)
 
@@ -40,8 +41,8 @@ instance (KnownSymbol base, KnownSymbol quote, Monad m) =>
              sellOrderProp o = oPrice o > midPrice
          buyOrders  <- nonEmptyList $ SS.series `suchThat` buyOrderProp
          sellOrders <- nonEmptyList $ SS.series `suchThat` sellOrderProp
-         return $ NonEmpty $ OrderBook (Vec.fromList $ sortBy (comparing Down) buyOrders)
-                                       (Vec.fromList $ sort sellOrders)
+         return $ NonEmpty $ OrderBook (BuySide . Vec.fromList $ sortBy (comparing Down) buyOrders)
+                                       (SellSide . Vec.fromList $ sort sellOrders)
 
 
 instance (KnownSymbol base, KnownSymbol quote, Monad m) =>
@@ -65,7 +66,7 @@ instance (KnownSymbol symbol, Monad m) =>
    Serial m (Positive (Money.Dense symbol)) where
       series = do
          Positive (rat :: Rational) <- series
-         return $ Positive (fromRational rat)
+         return $ Positive (Money.dense' rat)
 
 
 instance (Show a, Serial m a) => Serial m (Vector a) where
@@ -77,11 +78,11 @@ instance (KnownSymbol base, KnownSymbol quote) =>
       midPrice   <- QC.arbitrary
       buyOrders  <- QC.listOf $ QC.arbitrary `QC.suchThat` (\o -> oPrice o < midPrice)
       sellOrders <- QC.listOf $ QC.arbitrary `QC.suchThat` (\o -> oPrice o > midPrice)
-      return $ OrderBook (Vec.fromList (sortBy (comparing Down) buyOrders))
-                         (Vec.fromList (sort sellOrders))
+      return $ OrderBook (BuySide $ Vec.fromList (sortBy (comparing Down) buyOrders))
+                         (SellSide $ Vec.fromList (sort sellOrders))
 
 instance QC.Arbitrary (Order base quote) where
-   arbitrary = Order <$> QC.arbitrary `QC.suchThat` (> fromRational 0)
+   arbitrary = Order <$> QC.arbitrary `QC.suchThat` (> Money.dense' 0)
                      <*> QC.arbitrary
 
 instance QC.Arbitrary (Money.Dense currency) where
@@ -96,4 +97,4 @@ instance QC.Arbitrary (Money.ExchangeRate src dst) where
     Just x <- QC.suchThat (fmap Money.exchangeRate QC.arbitrary) isJust
     pure x
   shrink =
-    catMaybes . fmap Money.exchangeRate . QC.shrink . Money.fromExchangeRate
+    catMaybes . fmap Money.exchangeRate . QC.shrink . Money.exchangeRateToRational

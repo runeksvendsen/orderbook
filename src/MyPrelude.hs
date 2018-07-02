@@ -7,14 +7,14 @@ module MyPrelude
 , sameSym
 , trace
 , Vector
---, fmapL
+, traceIt
 , printf
 --, failOnErr
 )
 where
 
-import Protolude hiding (trace, Show, show, error)
-import Prelude (String, Show, show, id, mod, lookup, error)
+import Protolude hiding (trace, Show, show)
+import Prelude (String, Show, show, id, mod, lookup, error, lines, unlines)
 import Debug.Trace (trace)
 --import Safe
 import GHC.TypeLits as TypeLits (Symbol, KnownSymbol, SomeSymbol(..)
@@ -28,6 +28,9 @@ import Text.Printf
 
 sameSym :: (KnownSymbol a, KnownSymbol b) => Proxy a -> Proxy b -> Bool
 sameSym a b = isJust (sameSymbol a b)
+
+traceIt :: Show a => a -> a
+traceIt a = show a `trace` a
 
 --failOnErr :: forall a venue. KnownSymbol venue => Either Req.ServantError (a venue) -> a venue
 --failOnErr = either (error . toS . errMsg . show) id

@@ -1,5 +1,6 @@
 import MyPrelude
 
+import qualified OrderBook
 import qualified Spec.Matching      as Matching
 import qualified Spec.Composition   as Composition
 

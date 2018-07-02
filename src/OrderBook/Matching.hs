@@ -31,7 +31,7 @@ instance Eq (IgnoreFillRes (MatchResult base quote)) where
       && resOrders mr1 == resOrders mr2
 
 emptyMatchRes :: MatchResult base quote
-emptyMatchRes = MatchResult (fromRational 0) (fromRational 0) [] InsufficientDepth
+emptyMatchRes = MatchResult (Money.dense' 0) (Money.dense' 0) [] InsufficientDepth
 
 addOrder :: MatchResult src quote -> Order src quote -> MatchResult src quote
 addOrder MatchResult{..} o@Order{..} =
@@ -52,8 +52,8 @@ executionPrice MatchResult{..} =
 --  'Nothing' in case of empty match.
 slippage :: MatchResult base quote -> Maybe Rational
 slippage mr@MatchResult{..} = do
-   bestPrice <- Money.fromExchangeRate . oPrice <$> lastMay resOrders
-   avgPrice  <- Money.fromExchangeRate <$> executionPrice mr
+   bestPrice <- Money.exchangeRateToRational . oPrice <$> lastMay resOrders
+   avgPrice  <- Money.exchangeRateToRational <$> executionPrice mr
    let slippageAmount = abs $ bestPrice - avgPrice
    return $ slippageAmount / bestPrice * 100
 
@@ -68,17 +68,19 @@ _marketOrder orders quoteAmount =
       | resQuoteQty + Money.exchange oPrice oQuantity < quoteAmount = addOrder mr order
       | otherwise = addOrder mr{ resRes = Matched } finalOrder
          where finalOrder  = Order finalQty oPrice
-               finalQty = Money.exchange (Money.flipExchangeRate oPrice) (quoteAmount-resQuoteQty)
+               finalQty = Money.exchange (Money.exchangeRateRecip oPrice) (quoteAmount-resQuoteQty)
 
-marketSell :: OrderBook venue base quote     -- ^ Order book
+marketSell :: BuyOrders bo base quote
+           => bo base quote                  -- ^ Orders
            -> Money.Dense quote              -- ^ Sell 'base' worth this 'quote'-amount
            -> MatchResult base quote         -- ^ Matched buy orders
-marketSell book = _marketOrder (buySide $ obBids book)
+marketSell bo = _marketOrder (buyOrders bo)
 
-marketBuy :: OrderBook venue base quote      -- ^ Order book
+marketBuy :: SellOrders so base quote
+          => so base quote                   -- ^ Orders
           -> Money.Dense quote               -- ^ Buy 'base' worth this 'quote'-amount
           -> MatchResult base quote          -- ^ Matched sell orders
-marketBuy book = _marketOrder (sellSide $ obAsks book)
+marketBuy so = _marketOrder (sellOrders so)
 
 -- | Maximum amount that can be bought/sold at given slippage
 _slippageOrder :: forall base quote.
@@ -91,27 +93,27 @@ _slippageOrder orders targetSlip =
    where
    -- If we've processed all orders, and the resulting slippage matches target slippage, we say it's a match
    setMatch mr = if slippage mr == Just targetSlip then mr{ resRes = Matched } else mr
-   bestPrice = Money.fromExchangeRate . oPrice $ Vec.head orders
+   bestPrice = Money.exchangeRateToRational . oPrice $ Vec.head orders
    targetPrice  = bestPrice + targetSlip*bestPrice/100  -- Target average price
    handleOrder :: MatchResult base quote -> Order base quote -> MatchResult base quote
    handleOrder mr@MatchResult{..} order@Order{..}
       | resRes == Matched = mr
       | maybe True (<= abs targetSlip) (slippage $ addOrder mr order) = addOrder mr order
-      | finalQty > 0 = addOrder finalMr (Order (fromRational finalQty) oPrice)
+      | finalQty > 0 = addOrder finalMr (Order (Money.dense' finalQty) oPrice)
       | otherwise    = finalMr
          where
          finalMr  = mr{ resRes = Matched }
          finalQty = abs $ (targetPrice*toRational resBaseQty - toRational resQuoteQty) /
-                          (Money.fromExchangeRate oPrice - targetPrice)
+                          (Money.exchangeRateToRational oPrice - targetPrice)
 
-slippageSell :: forall base quote venue bo.
+slippageSell :: forall base quote bo.
                 (KnownSymbol base, KnownSymbol quote, BuyOrders bo base quote)
              => bo base quote                -- ^ Orders
              -> Rational                     -- ^ Desired slippage (in percent) (must be positive)
              -> MatchResult base quote       -- ^ Matched buy orders
 slippageSell bo slip = _slippageOrder (buyOrders bo) (-1 * slip)
 
-slippageBuy :: forall base quote venue so.
+slippageBuy :: forall base quote so.
                (KnownSymbol base, KnownSymbol quote, SellOrders so base quote)
             => so base quote              -- ^ Orders
             -> Rational                   -- ^ Desired slippage (in percent) (must be positive)
@@ -119,37 +121,18 @@ slippageBuy :: forall base quote venue so.
 slippageBuy so = _slippageOrder (sellOrders so)
 
 instance (KnownSymbol base, KnownSymbol quote) => Show (MatchResult base quote) where
-   show mr@MatchResult{..} =
+   show MatchResult{..} =
       let
-         template = "<MatchResult %s: baseQty: %s, quoteQty: %s, orders: " <> orderIndent <> "%s>"
-         fillRes = if resRes == Matched then "filled" else "unfilles" :: String
+         template = "<%s/%s MatchResult %s: baseQty: %s, quoteQty: %s, orders: " <> orderIndent <> "%s>"
+         fillRes = if resRes == Matched then "filled" else "unfilled" :: String
+         baseSymbol = symbolVal (Proxy :: Proxy base)
+         quoteSymbol = symbolVal (Proxy :: Proxy quote)
          baseQty = realToFrac (toRational resBaseQty) :: Double
          quoteQty = realToFrac $ toRational resQuoteQty :: Double
          orderIndent = "\n\t"
-         orderLstStr = intercalate orderIndent (show <$> reverse resOrders)
-      in printf template fillRes
+         orderLstStr = intercalate orderIndent (showOrders "Order" $ reverse resOrders)
+      in printf template 
+                baseSymbol quoteSymbol fillRes
                 (printf "%.8g" baseQty :: String)
                 (printf "%.8g" quoteQty :: String)
                 orderLstStr
-
-instance (KnownSymbol base, KnownSymbol quote) => Print (MatchResult base quote) where
-   putStr mr@MatchResult{..} =
-      let fillRes = if resRes == Matched then "Order filled: " else "Partial fill: "
-          baseQty = realToFrac (toRational resBaseQty) :: Double
-          quoteQty = realToFrac $ toRational resQuoteQty :: Double
-          priceM = realToFrac . Money.fromExchangeRate <$> executionPrice mr  :: Maybe Double
-          baseSymbol = symbolVal (Proxy :: Proxy base)
-          quoteSymbol = symbolVal (Proxy :: Proxy quote)
-          handleEmpty = maybe "<empty order>"
-          showDouble :: Double -> Text
-          showDouble d = toS (printf "%.4g" d :: String)
-          showRat :: Rational -> Text
-          showRat  = showDouble . realToFrac
-          showT :: Show a => a -> Text
-          showT = toS . show
-          finalStr = fillRes <> showDouble baseQty <> " " <> toS baseSymbol <> " @ "
-                             <> handleEmpty showDouble priceM
-                             <> " (" <> showT quoteQty <> " " <> toS quoteSymbol <> ")"
-                             <> " Slippage: " <> handleEmpty showRat (slippage mr) <> "%"
-      in putStr (finalStr :: Text)
-   putStrLn l = putStr l >> putStr ("\n" :: Text)

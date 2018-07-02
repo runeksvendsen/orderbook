@@ -39,12 +39,15 @@ default-extensions:
 dependencies:
 - base            >= 4.7    && < 5
 - protolude
-- safe-money      >= 0.4.1  && < 0.5
+- safe-money
 - vector
 - text
 
 library:
   source-dirs: src
+  ghc-options:
+  # - -Wall
+  - -fno-warn-name-shadowing
 
 tests:
   orderbook-test:
@@ -54,6 +57,8 @@ tests:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    # - -Wall
+    - -fno-warn-name-shadowing
     dependencies:
     - orderbook
     - QuickCheck
