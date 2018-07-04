@@ -330,3 +330,25 @@ instance (KnownSymbol venue, KnownSymbol base, KnownSymbol quote) =>
    putStr ob = putStr (toS $ show ob :: Text)
    putStrLn l = putStr l >> putStr ("\n" :: Text)
 
+-- | Flip a type's two "Symbol" type variables (possibly converting to a new type)
+class Invertible (a :: Symbol -> Symbol -> *) (b :: Symbol -> Symbol -> *) where
+    invert :: a x y -> b y x
+
+instance Invertible Money.ExchangeRate Money.ExchangeRate where
+    invert = Money.exchangeRateRecip
+
+instance Invertible Order Order where
+    invert Order{..} =
+        Order (Money.exchange oPrice oQuantity) (invert oPrice)
+
+instance Invertible (SellSide venue) (BuySide venue) where
+    invert SellSide{..} =
+        BuySide (fmap invert sellSide)
+
+instance Invertible (BuySide venue) (SellSide venue) where
+    invert BuySide{..} =
+        SellSide (fmap invert buySide)
+
+instance Invertible (OrderBook venue) (OrderBook venue) where
+    invert OrderBook{..} =
+        OrderBook (invert obAsks) (invert obBids)
