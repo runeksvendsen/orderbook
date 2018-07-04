@@ -80,7 +80,7 @@ class MarketOrder (qty :: Symbol) (base :: Symbol) (quote :: Symbol) where
 instance MarketOrder quote base quote where
     orderQuantity Order{..} = Money.exchange oPrice oQuantity
     matchQuantity = resQuoteQty
-    finalOrderQty amount mr Order{..} = 
+    finalOrderQty amount mr Order{..} =
         Money.exchange (Money.exchangeRateRecip oPrice) (amount-matchQuantity mr)
 
 instance MarketOrder base base quote where
@@ -149,7 +149,7 @@ instance (KnownSymbol base, KnownSymbol quote) => Show (MatchResult base quote) 
          quoteQty = realToFrac $ toRational resQuoteQty :: Double
          orderIndent = "\n\t"
          orderLstStr = intercalate orderIndent (showOrders "Order" $ reverse resOrders)
-      in printf template 
+      in printf template
                 baseSymbol quoteSymbol fillRes
                 (printf "%.8g" baseQty :: String)
                 (printf "%.8g" quoteQty :: String)

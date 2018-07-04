@@ -109,16 +109,16 @@ class OrderbookSide a (base :: Symbol) (quote :: Symbol) where
     totalBaseQty    :: a base quote -> Money.Dense base    -- ^ Total order quantity
     totalQuoteQty   :: a base quote -> Money.Dense quote   -- ^ Total order quote quantity
 
-instance OrderbookSide (BuySide venue) base quote where   
+instance OrderbookSide (BuySide venue) base quote where
     isEmpty = null . buySide
     totalBaseQty = sum . map oQuantity . Vec.toList . buySide
-    totalQuoteQty = 
+    totalQuoteQty =
         sum . map (\Order{..} -> Money.exchange oPrice oQuantity) . Vec.toList . buySide
 
-instance OrderbookSide (SellSide venue) base quote where   
+instance OrderbookSide (SellSide venue) base quote where
     isEmpty = null . sellSide
     totalBaseQty = sum . map oQuantity . Vec.toList . sellSide
-    totalQuoteQty = 
+    totalQuoteQty =
         sum . map (\Order{..} -> Money.exchange oPrice oQuantity) . Vec.toList . sellSide
 
 data OrderBook (venue :: Symbol) (base :: Symbol) (quote :: Symbol) = OrderBook
@@ -202,15 +202,15 @@ fromSomeOrder so@SomeOrder{..} = -- We know SomeOrder contains valid Dense/Excha
    Order (fromMaybe throwBug $ Money.dense soQuantity)
          (fromMaybe throwBug $ Money.exchangeRate soPrice)
 
-unsafeCastOrderbook 
+unsafeCastOrderbook
     :: (KnownSymbol base2, KnownSymbol quote2)
-    => OrderBook venue1 base1 quote1 
+    => OrderBook venue1 base1 quote1
     -> OrderBook venue2 base2 quote2
-unsafeCastOrderbook OrderBook{..} = 
-    OrderBook (BuySide . castOrders $ buySide obBids) 
+unsafeCastOrderbook OrderBook{..} =
+    OrderBook (BuySide . castOrders $ buySide obBids)
               (SellSide . castOrders $ sellSide obAsks)
   where
-    castOrders :: (Functor f, KnownSymbol a2, KnownSymbol b2) 
+    castOrders :: (Functor f, KnownSymbol a2, KnownSymbol b2)
                => f (Order a1 b1) -> f (Order a2 b2)
     castOrders = fmap (fromSomeOrder . fromOrder)
 
@@ -257,7 +257,7 @@ showOrder name cumVolM Order{..} =
       doublePrice = realToFrac . Money.exchangeRateToRational $ oPrice
       doubleQty :: Double
       doubleQty = realToFrac oQuantity
-      mkCumVol (baseV, quoteV) = printf " (cum. %.4f%s/%.4f%s)]" 
+      mkCumVol (baseV, quoteV) = printf " (cum. %.4f%s/%.4f%s)]"
                                    (realToFrac baseV :: Double) baseS
                                    (realToFrac quoteV :: Double) quoteS
       maybeVol :: String
@@ -288,32 +288,32 @@ instance (KnownSymbol venue, KnownSymbol base, KnownSymbol quote) =>
 
 instance (KnownSymbol venue, KnownSymbol base, KnownSymbol quote) =>
             Show (SellSide venue base quote) where
-   show SellSide{..} = 
+   show SellSide{..} =
         unlines . showOrders "SELL" . Vec.toList $ sellSide
 
 instance (KnownSymbol venue, KnownSymbol base, KnownSymbol quote) =>
             Show (BuySide venue base quote) where
-   show BuySide{..} = 
+   show BuySide{..} =
         unlines . reverse . showOrders "BUY" . Vec.toList $ buySide
 
 showOrders
-    :: (KnownSymbol base, KnownSymbol quote) 
+    :: (KnownSymbol base, KnownSymbol quote)
     => String                       -- ^ Prefix (e.g. "Sell", "Buy")
     -> [Order base quote]    -- ^ Orders
     -> [String]                     -- ^ One string per line of output
-showOrders prefix orders = fst $ 
-    foldl' (countVol prefix) 
-           ([], (Money.dense' 0, Money.dense' 0))  
+showOrders prefix orders = fst $
+    foldl' (countVol prefix)
+           ([], (Money.dense' 0, Money.dense' 0))
            orders
 
 -- Helper function for "instance Show BuySide/SellSide"
 countVol :: (KnownSymbol base, KnownSymbol quote)
          => String
          -> ([String], (Money.Dense base, Money.Dense quote))
-         -> Order base quote 
+         -> Order base quote
          -> ([String], (Money.Dense base, Money.Dense quote))
-countVol prefix (strL, (cumVolB, cumVolQ)) o@Order{..} = 
-    let newVolB = cumVolB+oQuantity 
+countVol prefix (strL, (cumVolB, cumVolQ)) o@Order{..} =
+    let newVolB = cumVolB+oQuantity
         newVolQ = cumVolQ+Money.exchange oPrice oQuantity
     in ( showOrder prefix (Just (newVolB,newVolQ)) o : strL
        , (newVolB, newVolQ)
