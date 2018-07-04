@@ -17,6 +17,7 @@ module OrderBook.Types
 , fromOrder
 , midPrice
 , showOrders
+, Invertible(..)
   -- * Test
 , composeRem
 , unsafeCastOrderbook
