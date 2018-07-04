@@ -15,53 +15,48 @@ import Test.HUnit.Lang
 
 spec :: Spec
 spec = parallel $ do
-   describe "orderbook composition" $ do
-      it "BuySide quantity is minimum of two composed BuySides" $
-         SC.property $ \ob1 ob2 ->
-            propComposeQuantityBuy (assertEqual "") ob1 ob2
-      it "SellSide quantity is minimum of two composed SellSides" $
-         SC.property $ \ob1 ob2 ->
-            propComposeQuantitySell (assertEqual "") ob1 ob2
+    describe "composeRem" $ do
       it "_marketOrder oBC then _marketOrder oAB == _marketOrder (oBC . oAB)" $
          SC.property $ \o1 o2 ->
-            propComposeOrderBuy assertEqual o1 o2
-    --   it "marketBuy obAB then marketBuy obBC == marketBuy (obBC . obAB)" $
-    --      SC.property $ \qty ob1 ob2 ->
-    --         propComposeMarketBuy assertEqual qty ob1 ob2
+            propComposeMarketOrder assertEqual o1 o2
+      it "marketBuy obBC then marketBuy obAB == marketBuy (obBC . obAB)" $
+         SC.property $ \quoteQty ob1 ob2 ->
+            propComposeMarketBuy assertEqual (SS.Positive quoteQty) ob1 ob2
+      it "marketSell obAB then marketSell obBC == marketSell (obBC . obAB)" $
+         SC.property $ \baseQty ob1 ob2 ->
+            propComposeMarketSell assertEqual (SS.Positive baseQty) ob1 ob2
 
-propComposeOrderBuy
+propComposeRemQuantity
   :: (String -> Rational -> Rational -> b)
    -> Order "A" "B"
    -> Order "B" "C"
    -> b
-propComposeOrderBuy compStr oAB oBC =
+propComposeRemQuantity compStr oAB oBC =
     let comp = compStr (unlines . intersperse "" $ [show oAC, show resBC, show resAB, show resAC])
         oAC = fst $ composeRem oBC oAB
+        cQty = min acQty bcQty
+        bcQty = Money.exchange (oPrice oBC) (oQuantity oBC)
         acQty = Money.exchange (oPrice oAC) (oQuantity oAC)
-        resBC = _marketOrder (Vec.singleton oBC) acQty
+        resBC = _marketOrder (Vec.singleton oBC) cQty
         resAB = _marketOrder (Vec.singleton oAB) (resBaseQty resBC)
-        resAC = _marketOrder (Vec.singleton oAC) acQty
+        resAC = _marketOrder (Vec.singleton oAC) cQty
     in  toRational (resBaseQty resAB) `comp` toRational (resBaseQty resAC)
 
-propComposeQuantityBuy
-   :: (Rational -> Rational -> b)
-   -> TestOBAB
-   -> TestOBBC
+propComposeMarketOrder
+  :: (String -> Rational -> Rational -> b)
+   -> Order "A" "B"
+   -> Order "B" "C"
    -> b
-propComposeQuantityBuy comp obAB obBC =
-    let obAC = obBC Cat.. obAB 
-        rationalBuyQty = toRational . totalQty . obBids in
-    rationalBuyQty obAC `comp` min (rationalBuyQty obBC) (rationalBuyQty obAB)
-
-propComposeQuantitySell
-   :: (Rational -> Rational -> b)
-   -> TestOBAB
-   -> TestOBBC
-   -> b
-propComposeQuantitySell comp obAB obBC =
-    let obAC = obBC Cat.. obAB 
-        rationalSellQty = toRational . totalQty . obAsks in
-    rationalSellQty obAC `comp` min (rationalSellQty obBC) (rationalSellQty obAB)
+propComposeMarketOrder compStr oAB oBC =
+    let comp = compStr (unlines . intersperse "" $ [show oAC, show resBC, show resAB, show resAC])
+        oAC = fst $ composeRem oBC oAB
+        cQty = min acQty bcQty
+        bcQty = Money.exchange (oPrice oBC) (oQuantity oBC)
+        acQty = Money.exchange (oPrice oAC) (oQuantity oAC)
+        resBC = _marketOrder (Vec.singleton oBC) cQty
+        resAB = _marketOrder (Vec.singleton oAB) (resBaseQty resBC)
+        resAC = _marketOrder (Vec.singleton oAC) cQty
+    in  toRational (resBaseQty resAB) `comp` toRational (resBaseQty resAC)
 
 propComposeMarketBuy
    :: (String -> Money.Dense "A" -> Money.Dense "A" -> b)
@@ -72,11 +67,32 @@ propComposeMarketBuy
 propComposeMarketBuy compStr (SS.Positive qtyC) obAB obBC =
     resBaseQty resAB `comp` resBaseQty resAC
   where
-    comp = compStr (unlines [show resBC, show resAB, show resAC])
-    obAC = obBC Cat.. obAB 
-    resBC = marketBuy obBC qtyC
+    minObQtyC = min (totalQuoteQty $ obAsks obBC) (totalQuoteQty $ obAsks obAC)
+    actualQtyC = min qtyC minObQtyC
+    obAC = obBC Cat.. obAB
+    resBC = marketBuy obBC actualQtyC
     resAB = marketBuy obAB (resBaseQty resBC)
-    resAC = marketBuy obAC qtyC
+    resAC = marketBuy obAC actualQtyC
+    -- Util
+    comp = compStr (unlines . intersperse "" $ [show qtyC, show obBC, show obAB, show obAC, show resBC, show resAB, show resAC])
+
+propComposeMarketSell
+   :: (String -> Money.Dense "C" -> Money.Dense "C" -> b)
+   -> SS.Positive (Money.Dense "A")
+   -> TestOBAB
+   -> TestOBBC
+   -> b
+propComposeMarketSell compStr (SS.Positive qtyA) obAB obBC =
+    resQuoteQty resBC `comp` resQuoteQty resAC
+  where
+    minObQtyA = min (totalBaseQty $ obBids obAB) (totalBaseQty $ obBids obAC)
+    actualQtyA = min qtyA minObQtyA
+    obAC = obBC Cat.. obAB
+    resAB = marketSell obAB actualQtyA
+    resBC = marketSell obBC (resQuoteQty resAB)
+    resAC = marketSell obAC actualQtyA
+    -- Util
+    comp = compStr (unlines . intersperse "" $ [show qtyA, show obBC, show obAB, show obAC, show resBC, show resAB, show resAC])
 
 type TestOBAB = OrderBook "TestVenue" "A" "B"
 type TestOBBC = OrderBook "TestVenue" "B" "C"

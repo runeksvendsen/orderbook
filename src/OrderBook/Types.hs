@@ -19,6 +19,7 @@ module OrderBook.Types
 , showOrders
   -- * Test
 , composeRem
+, unsafeCastOrderbook
 )
 where
 
@@ -73,23 +74,29 @@ composeLst bcL =
         in composeLstR (ac : accum) `uncurry` toPair rem
 
 -- | The result of composing two orders, plus the remainder (if any)
-composeRem :: Order b c
+composeRem :: forall a b c.
+              Order b c
            -> Order a b
            -> (Order a c, Maybe (Either (Order b c) (Order a b)))
 composeRem bc ab =
-   fromDiff $ qtyBC `compare` qtyAB
+   fromDiff $ oQuantity bc `compare` oABQtyB
    where
-   price = oPrice bc Cat.. oPrice ab
-   qtyAB = toRational (oQuantity ab)
-   qtyBC = toRational (oQuantity bc)
    -- No remainder ("Order a b" quantity is equal to that of "Order b c")
-   fromDiff EQ = (Order (oQuantity ab) price, Nothing)
+   fromDiff EQ = (Order (oQuantity ab) acPrice, Nothing)
    -- Remainder of type "Order b c" ("Order b c" quantity is greater than that of "Order a b")
-   fromDiff GT = (Order (oQuantity ab) price, Just . Left $
-                  Order (Money.dense' $ qtyBC-qtyAB) (oPrice bc))
+   fromDiff GT = (Order (oQuantity ab) acPrice, Just . Left $
+                  Order (oQuantity bc - oABQtyB) (oPrice bc))
    -- Remainder of type "Order a b" ("Order b c" quantity is less than that of "Order a b")
-   fromDiff LT = (Order (Money.dense' . toRational $ oQuantity bc) price, Just . Right $
-                  Order (Money.dense' $ qtyAB-qtyBC) (oPrice ab))
+   fromDiff LT = (Order (bToA $ oQuantity bc) acPrice, Just . Right $
+                  Order (bToA (oABQtyB - oQuantity bc)) (oPrice ab))
+   -- Price for AC-order
+   acPrice = oPrice bc Cat.. oPrice ab
+   -- The AB-order's "a" quantity converted to "b" units
+   oABQtyB :: Money.Dense b
+   oABQtyB = Money.exchange (oPrice ab) (oQuantity ab)
+   -- Convert "b" units into "a" units
+   bToA :: Money.Dense b -> Money.Dense a
+   bToA = Money.exchange (Money.exchangeRateRecip $ oPrice ab)
 
 largeQtyIdOrder :: Order base base
 largeQtyIdOrder =
@@ -98,16 +105,21 @@ largeQtyIdOrder =
     pseudoInf = fromIntegral (maxBound :: Int64) % 1
 
 class OrderbookSide a (base :: Symbol) (quote :: Symbol) where
-    isEmpty  :: a base quote -> Bool                -- ^ No orders?
-    totalQty :: a base quote -> Money.Dense base    -- ^ Total order quantity
+    isEmpty         :: a base quote -> Bool                -- ^ No orders?
+    totalBaseQty    :: a base quote -> Money.Dense base    -- ^ Total order quantity
+    totalQuoteQty   :: a base quote -> Money.Dense quote   -- ^ Total order quote quantity
 
 instance OrderbookSide (BuySide venue) base quote where   
     isEmpty = null . buySide
-    totalQty = sum . map oQuantity . Vec.toList . buySide
+    totalBaseQty = sum . map oQuantity . Vec.toList . buySide
+    totalQuoteQty = 
+        sum . map (\Order{..} -> Money.exchange oPrice oQuantity) . Vec.toList . buySide
 
 instance OrderbookSide (SellSide venue) base quote where   
     isEmpty = null . sellSide
-    totalQty = sum . map oQuantity . Vec.toList . sellSide
+    totalBaseQty = sum . map oQuantity . Vec.toList . sellSide
+    totalQuoteQty = 
+        sum . map (\Order{..} -> Money.exchange oPrice oQuantity) . Vec.toList . sellSide
 
 data OrderBook (venue :: Symbol) (base :: Symbol) (quote :: Symbol) = OrderBook
    { obBids  :: BuySide venue base quote
@@ -189,6 +201,18 @@ fromSomeOrder so@SomeOrder{..} = -- We know SomeOrder contains valid Dense/Excha
    let throwBug = error $ "SomeOrder: invalid qty/price: " ++ show so in
    Order (fromMaybe throwBug $ Money.dense soQuantity)
          (fromMaybe throwBug $ Money.exchangeRate soPrice)
+
+unsafeCastOrderbook 
+    :: (KnownSymbol base2, KnownSymbol quote2)
+    => OrderBook venue1 base1 quote1 
+    -> OrderBook venue2 base2 quote2
+unsafeCastOrderbook OrderBook{..} = 
+    OrderBook (BuySide . castOrders $ buySide obBids) 
+              (SellSide . castOrders $ sellSide obAsks)
+  where
+    castOrders :: (Functor f, KnownSymbol a2, KnownSymbol b2) 
+               => f (Order a1 b1) -> f (Order a2 b2)
+    castOrders = fmap (fromSomeOrder . fromOrder)
 
 instance Ord (Order base quote) where
    o1 <= o2 = oPrice o1 <= oPrice o2

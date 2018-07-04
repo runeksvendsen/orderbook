@@ -1,3 +1,4 @@
+{-# LANGUAGE IncoherentInstances #-}
 module OrderBook.Matching where
 
 import MyPrelude hiding (trace)
@@ -57,35 +58,52 @@ slippage mr@MatchResult{..} = do
    let slippageAmount = abs $ bestPrice - avgPrice
    return $ slippageAmount / bestPrice * 100
 
-_marketOrder :: Vector (Order base quote)    -- ^ All orders from order book
-             -> Money.Dense quote            -- ^ Exchange 'base' worth this 'quote'-amount
+_marketOrder :: MarketOrder qty base quote
+             => Vector (Order base quote)    -- ^ All orders from order book
+             -> Money.Dense qty              -- ^ Exchange 'base' worth this 'quote'-amount
              -> MatchResult base quote       -- ^ Result
-_marketOrder orders quoteAmount =
+_marketOrder orders amount =
    foldl' handleOrder emptyMatchRes orders
    where
    handleOrder mr@MatchResult{..} order@Order{..}
       | resRes == Matched = mr
-      | resQuoteQty + Money.exchange oPrice oQuantity < quoteAmount = addOrder mr order
+      | matchQuantity mr + orderQuantity order < amount = addOrder mr order
       | otherwise = addOrder mr{ resRes = Matched } finalOrder
-         where finalOrder  = Order finalQty oPrice
-               finalQty = Money.exchange (Money.exchangeRateRecip oPrice) (quoteAmount-resQuoteQty)
+         where finalOrder = Order finalQty oPrice
+               finalQty = finalOrderQty amount mr order
+
+class MarketOrder (qty :: Symbol) (base :: Symbol) (quote :: Symbol) where
+    orderQuantity :: Order base quote -> Money.Dense qty
+    matchQuantity :: MatchResult base quote -> Money.Dense qty
+    finalOrderQty :: Money.Dense qty -> MatchResult base quote -> Order base quote -> Money.Dense base
+
+instance MarketOrder quote base quote where
+    orderQuantity Order{..} = Money.exchange oPrice oQuantity
+    matchQuantity = resQuoteQty
+    finalOrderQty amount mr Order{..} = 
+        Money.exchange (Money.exchangeRateRecip oPrice) (amount-matchQuantity mr)
+
+instance MarketOrder base base quote where
+    orderQuantity = oQuantity
+    matchQuantity = resBaseQty
+    finalOrderQty amount mr Order{..} = amount-matchQuantity mr
 
 marketSell :: BuyOrders bo base quote
            => bo base quote                  -- ^ Orders
-           -> Money.Dense quote              -- ^ Sell 'base' worth this 'quote'-amount
+           -> Money.Dense base               -- ^ Sell this "base" amount
            -> MatchResult base quote         -- ^ Matched buy orders
 marketSell bo = _marketOrder (buyOrders bo)
 
 marketBuy :: SellOrders so base quote
           => so base quote                   -- ^ Orders
-          -> Money.Dense quote               -- ^ Buy 'base' worth this 'quote'-amount
+          -> Money.Dense quote               -- ^ Buy "base" worth this "quote"-amount
           -> MatchResult base quote          -- ^ Matched sell orders
 marketBuy so = _marketOrder (sellOrders so)
 
 -- | Maximum amount that can be bought/sold at given slippage
 _slippageOrder :: forall base quote.
                   (KnownSymbol base, KnownSymbol quote)
-               => Vector (Order base quote)        -- ^ All orders from order book
+               => Vector (Order base quote)        -- ^ Sell/buy orders
                -> Rational                         -- ^ Slippage in percent (positive for buy orders, negative for sell orders)
                -> MatchResult base quote           -- ^ Matched orders
 _slippageOrder orders targetSlip =

@@ -16,9 +16,9 @@ import qualified Data.Vector  as Vec
 spec :: Spec
 spec = parallel $ do
    describe "market order by slippage" $ do
-      it "SELL has same MatchResult as by quote quantity" $
+      it "SELL has same MatchResult as by base quantity" $
          SC.property $ \slippage' ob ->
-            propSellSlippageQuote (assertEqArgs slippage' ob) ob slippage'
+            propSellSlippageBase (assertEqArgs slippage' ob) ob slippage'
       it "BUY has same MatchResult as by quote quantity" $
          SC.property $ \slippage' ob ->
             propBuySlippageQuote (assertEqArgs slippage' ob) ob slippage'   --
@@ -37,14 +37,14 @@ spec = parallel $ do
          SC.property $ \ob ->
             propBuyZeroSlippage shouldBe ob
 
-propSellSlippageQuote
+propSellSlippageBase
    :: (Comp -> Comp -> b)
    -> TestOB
    -> SS.NonNegative Rational
    -> b
-propSellSlippageQuote comp ob (SS.NonNegative slippage') =
+propSellSlippageBase comp ob (SS.NonNegative slippage') =
    let slippageRes = slippageSell ob slippage' in
-   IgnoreFillRes slippageRes `comp` IgnoreFillRes (marketSell ob (resQuoteQty slippageRes))
+   IgnoreFillRes slippageRes `comp` IgnoreFillRes (marketSell ob (resBaseQty slippageRes))
 
 propBuySlippageQuote
    :: (Comp -> Comp -> b)
@@ -55,7 +55,7 @@ propBuySlippageQuote comp ob (SS.NonNegative slippage') =
    let slippageRes = slippageBuy ob slippage' in
    IgnoreFillRes slippageRes `comp` IgnoreFillRes (marketBuy ob (resQuoteQty slippageRes))
 
-propSellOrdersBegin :: ([TestOrder] -> [TestOrder] -> b) -> NonEmpty TestOB -> SS.Positive QuoteQty -> b
+propSellOrdersBegin :: ([TestOrder] -> [TestOrder] -> b) -> NonEmpty TestOB -> SS.Positive BaseQty -> b
 propSellOrdersBegin comp (NonEmpty ob) (SS.Positive qty) =
    case initMay sellRes of
       Nothing     -> error errMsg
@@ -102,6 +102,7 @@ type Comp = IgnoreFillRes (MatchResult "BASE" "QUOTE")
 type TestOB = OrderBook "TestVenue" "BASE" "QUOTE"
 type TestOrder = Order "BASE" "QUOTE"
 type QuoteQty = Money.Dense "QUOTE"
+type BaseQty = Money.Dense "BASE"
 
 assertEqArgs :: (Show a, Eq a) => SS.NonNegative Rational -> TestOB -> a -> a -> IO ()
 assertEqArgs (SS.NonNegative slip) ob = assertEqual $

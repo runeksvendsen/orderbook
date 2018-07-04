@@ -1,6 +1,5 @@
 import MyPrelude
 
-import qualified OrderBook
 import qualified Spec.Matching      as Matching
 import qualified Spec.Composition   as Composition
 
@@ -21,8 +20,8 @@ properties = localOption (SC.SmallCheckDepth scDepth) $
    testGroup "Properties" [scProps]
 
 scProps = testGroup "(checked by SmallCheck)"
-  [ SC.testProperty "slippageSell ob x == marketSell ob (resQuoteQty $ slippageSell ob x)" $
-      \ob slippage' -> Matching.propSellSlippageQuote (==) ob slippage'
+  [ SC.testProperty "slippageSell ob x == marketSell ob (resBaseQty $ slippageSell ob x)" $
+      \ob slippage' -> Matching.propSellSlippageBase (==) ob slippage'
   , SC.testProperty "slippageBuy ob x == marketBuy ob (resQuoteQty $ slippageBuy ob x)" $
       \ob slippage' -> Matching.propBuySlippageQuote (==) ob slippage'
   , SC.testProperty "obBids ob `startsWith` init (resOrders $ marketSell ob qty)" $

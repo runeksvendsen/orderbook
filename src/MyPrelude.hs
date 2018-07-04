@@ -1,4 +1,3 @@
-{-# LANGUAGE UndecidableInstances #-}
 module MyPrelude
 ( module Protolude
 --, module Safe
