@@ -1,6 +1,7 @@
 {-# LANGUAGE ExistentialQuantification #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TypeFamilies #-}
 module OrderBook.Types
 ( OrderBook(..)
 , BuySide(..), buySide, bestBid
@@ -18,6 +19,7 @@ module OrderBook.Types
 , midPrice
 , showOrders
 , Invertible(..)
+, Composable(..)
   -- * Test
 , composeRem
 , unsafeCastOrderbook
@@ -148,7 +150,6 @@ instance SellOrders (OrderBook venue) base quote where sellOrders = sellSide . o
 instance BuyOrders (BuySide venue) base quote where buyOrders = buySide
 instance BuyOrders (OrderBook venue) base quote where buyOrders = buySide . obBids
 
-
 data SomeBook (venue :: Symbol) = SomeBook
    { sbBids  :: Vector SomeOrder
    , sbAsks  :: Vector SomeOrder
@@ -199,7 +200,8 @@ fromSomeOrder
    => SomeOrder
    -> Order base quote
 fromSomeOrder so@SomeOrder{..} = -- We know SomeOrder contains valid Dense/ExchangeRate
-   let throwBug = error $ "SomeOrder: invalid qty/price: " ++ show so in
+   let throwBug :: a
+       throwBug = error $ "SomeOrder: invalid qty/price: " ++ show so in
    Order (fromMaybe throwBug $ Money.dense soQuantity)
          (fromMaybe throwBug $ Money.exchangeRate soPrice)
 
@@ -210,10 +212,10 @@ unsafeCastOrderbook
 unsafeCastOrderbook OrderBook{..} =
     OrderBook (BuySide . castOrders $ buySide obBids)
               (SellSide . castOrders $ sellSide obAsks)
-  where
-    castOrders :: (Functor f, KnownSymbol a2, KnownSymbol b2)
-               => f (Order a1 b1) -> f (Order a2 b2)
-    castOrders = fmap (fromSomeOrder . fromOrder)
+
+castOrders :: (Functor f, KnownSymbol a2, KnownSymbol b2)
+            => f (Order a1 b1) -> f (Order a2 b2)
+castOrders = fmap (fromSomeOrder . fromOrder)
 
 instance Ord (Order base quote) where
    o1 <= o2 = oPrice o1 <= oPrice o2
@@ -353,3 +355,48 @@ instance Invertible (BuySide venue) (SellSide venue) where
 instance Invertible (OrderBook venue) (OrderBook venue) where
     invert OrderBook{..} =
         OrderBook (invert obAsks) (invert obBids)
+
+-- | Compose two types parameterized over three Symbols
+-- TODO: Figure out how to combine the two "venue"-Symbols (type-level list of Symbols?)
+class Composable (a :: Symbol -> Symbol -> Symbol -> *) venue1 venue2 x y z where
+    compose :: a venue1 y z
+            -> a venue2 x y
+            -> a venue1 x z
+instance ( KnownSymbol x, KnownSymbol y, KnownSymbol z
+         , KnownSymbol venue1, KnownSymbol venue2
+         )
+        => Composable SellSide venue1 venue2 x y z where
+    compose s1 s2 =
+        unsafeCastSellSideVenue $ s1 Cat.. unsafeCastSellSideVenue s2
+
+instance ( KnownSymbol x, KnownSymbol y, KnownSymbol z
+         , KnownSymbol venue1, KnownSymbol venue2
+         )
+        => Composable BuySide venue1 venue2 x y z where
+    compose s1 s2 =
+        unsafeCastBuySideVenue $ s1 Cat.. unsafeCastBuySideVenue s2
+
+instance ( KnownSymbol x, KnownSymbol y, KnownSymbol z
+         , KnownSymbol venue1, KnownSymbol venue2
+         )
+        => Composable OrderBook venue1 venue2 x y z where
+    compose s1 s2 =
+        unsafeCastOrderbookVenue $ s1 Cat.. unsafeCastOrderbookVenue s2
+
+unsafeCastSellSideVenue
+    :: (KnownSymbol base, KnownSymbol quote)
+    => SellSide venue1 base quote
+    -> SellSide venue2 base quote
+unsafeCastSellSideVenue = SellSide . sellSide
+
+unsafeCastBuySideVenue
+    :: (KnownSymbol base, KnownSymbol quote)
+    => BuySide venue1 base quote
+    -> BuySide venue2 base quote
+unsafeCastBuySideVenue = BuySide . buySide
+
+unsafeCastOrderbookVenue
+    :: (KnownSymbol base, KnownSymbol quote)
+    => OrderBook venue1 base quote
+    -> OrderBook venue2 base quote
+unsafeCastOrderbookVenue = unsafeCastOrderbook

@@ -17,6 +17,7 @@ import Prelude (String, Show, show, id, mod, lookup, error, lines, unlines)
 import Debug.Trace (trace)
 --import Safe
 import GHC.TypeLits as TypeLits (Symbol, KnownSymbol, SomeSymbol(..)
+                                , AppendSymbol, CmpSymbol
                                 , sameSymbol, symbolVal, someSymbolVal
                                 )
 --import Control.Monad.Fail
