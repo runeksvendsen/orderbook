@@ -19,7 +19,6 @@ module OrderBook.Types
 , midPrice
 , showOrders
 , Invertible(..)
-, Composable(..)
   -- * Test
 , composeRem
 , unsafeCastOrderbook
@@ -34,12 +33,12 @@ import qualified Control.Category   as Cat
 
 
 -- | Buyers want to convert "quote" to "base"
-newtype BuySide (venue :: Symbol) (base :: Symbol) (quote :: Symbol)
+newtype BuySide (base :: Symbol) (quote :: Symbol)
    = BuySide { buySide :: Vector (Order base quote) }
       deriving (Eq, Generic)
 
 -- | Sellers want to convert "base" to "quote"
-newtype SellSide (venue :: Symbol) (base :: Symbol) (quote :: Symbol)
+newtype SellSide (base :: Symbol) (quote :: Symbol)
    = SellSide { sellSide :: Vector (Order base quote) }
       deriving (Eq, Generic)
 
@@ -49,12 +48,12 @@ bestBid = (Vec.!? 0) . buySide . obBids
 bestAsk :: OrderBook venue base quote -> Maybe (Order base quote)
 bestAsk = (Vec.!? 0) . sellSide . obAsks
 
-instance Cat.Category (BuySide venue) where
+instance Cat.Category BuySide where
    id = BuySide (Vec.fromList $ repeat largeQtyIdOrder)
    (BuySide b1) . (BuySide b2) = BuySide $ Vec.fromList orders
       where orders = composeLst (Vec.toList b1) (Vec.toList b2)
 
-instance Cat.Category (SellSide venue) where
+instance Cat.Category SellSide where
    id = SellSide (Vec.fromList $ repeat largeQtyIdOrder)
    (SellSide b1) . (SellSide b2) = SellSide $ Vec.fromList orders
       where orders = composeLst (Vec.toList b1) (Vec.toList b2)
@@ -112,25 +111,25 @@ class OrderbookSide a (base :: Symbol) (quote :: Symbol) where
     totalBaseQty    :: a base quote -> Money.Dense base    -- ^ Total order quantity
     totalQuoteQty   :: a base quote -> Money.Dense quote   -- ^ Total order quote quantity
 
-instance OrderbookSide (BuySide venue) base quote where
+instance OrderbookSide BuySide base quote where
     isEmpty = null . buySide
     totalBaseQty = sum . map oQuantity . Vec.toList . buySide
     totalQuoteQty =
         sum . map (\Order{..} -> Money.exchange oPrice oQuantity) . Vec.toList . buySide
 
-instance OrderbookSide (SellSide venue) base quote where
+instance OrderbookSide SellSide base quote where
     isEmpty = null . sellSide
     totalBaseQty = sum . map oQuantity . Vec.toList . sellSide
     totalQuoteQty =
         sum . map (\Order{..} -> Money.exchange oPrice oQuantity) . Vec.toList . sellSide
 
 data OrderBook (venue :: Symbol) (base :: Symbol) (quote :: Symbol) = OrderBook
-   { obBids  :: BuySide venue base quote
-   , obAsks  :: SellSide venue base quote
+   { obBids  :: BuySide base quote
+   , obAsks  :: SellSide base quote
    } deriving (Eq, Generic)
 
-instance NFData (BuySide venue base quote)
-instance NFData (SellSide venue base quote)
+instance NFData (BuySide base quote)
+instance NFData (SellSide base quote)
 instance NFData (OrderBook venue base quote)
 
 instance Cat.Category (OrderBook venue) where
@@ -144,10 +143,10 @@ class SellOrders a (base :: Symbol) (quote :: Symbol) where
 class BuyOrders a (base :: Symbol) (quote :: Symbol) where
     buyOrders :: a base quote -> Vector (Order base quote)
 
-instance SellOrders (SellSide venue) base quote where sellOrders = sellSide
+instance SellOrders SellSide base quote where sellOrders = sellSide
 instance SellOrders (OrderBook venue) base quote where sellOrders = sellSide . obAsks
 
-instance BuyOrders (BuySide venue) base quote where buyOrders = buySide
+instance BuyOrders BuySide base quote where buyOrders = buySide
 instance BuyOrders (OrderBook venue) base quote where buyOrders = buySide . obBids
 
 data SomeBook (venue :: Symbol) = SomeBook
@@ -289,13 +288,13 @@ instance (KnownSymbol venue, KnownSymbol base, KnownSymbol quote) =>
                   <> bidIndent <> intercalate bidIndent (lines $ show obBids)
       in printf template venue currPair midPriceStr orders
 
-instance (KnownSymbol venue, KnownSymbol base, KnownSymbol quote) =>
-            Show (SellSide venue base quote) where
+instance (KnownSymbol base, KnownSymbol quote) =>
+            Show (SellSide base quote) where
    show SellSide{..} =
         unlines . showOrders "SELL" . Vec.toList $ sellSide
 
-instance (KnownSymbol venue, KnownSymbol base, KnownSymbol quote) =>
-            Show (BuySide venue base quote) where
+instance (KnownSymbol base, KnownSymbol quote) =>
+            Show (BuySide base quote) where
    show BuySide{..} =
         unlines . reverse . showOrders "BUY" . Vec.toList $ buySide
 
@@ -344,59 +343,14 @@ instance Invertible Order Order where
     invert Order{..} =
         Order (Money.exchange oPrice oQuantity) (invert oPrice)
 
-instance Invertible (SellSide venue) (BuySide venue) where
+instance Invertible SellSide BuySide where
     invert SellSide{..} =
         BuySide (fmap invert sellSide)
 
-instance Invertible (BuySide venue) (SellSide venue) where
+instance Invertible BuySide SellSide where
     invert BuySide{..} =
         SellSide (fmap invert buySide)
 
 instance Invertible (OrderBook venue) (OrderBook venue) where
     invert OrderBook{..} =
         OrderBook (invert obAsks) (invert obBids)
-
--- | Compose two types parameterized over three Symbols
--- TODO: Figure out how to combine the two "venue"-Symbols (type-level list of Symbols?)
-class Composable (a :: Symbol -> Symbol -> Symbol -> *) venue1 venue2 x y z where
-    compose :: a venue1 y z
-            -> a venue2 x y
-            -> a venue1 x z
-instance ( KnownSymbol x, KnownSymbol y, KnownSymbol z
-         , KnownSymbol venue1, KnownSymbol venue2
-         )
-        => Composable SellSide venue1 venue2 x y z where
-    compose s1 s2 =
-        unsafeCastSellSideVenue $ s1 Cat.. unsafeCastSellSideVenue s2
-
-instance ( KnownSymbol x, KnownSymbol y, KnownSymbol z
-         , KnownSymbol venue1, KnownSymbol venue2
-         )
-        => Composable BuySide venue1 venue2 x y z where
-    compose s1 s2 =
-        unsafeCastBuySideVenue $ s1 Cat.. unsafeCastBuySideVenue s2
-
-instance ( KnownSymbol x, KnownSymbol y, KnownSymbol z
-         , KnownSymbol venue1, KnownSymbol venue2
-         )
-        => Composable OrderBook venue1 venue2 x y z where
-    compose s1 s2 =
-        unsafeCastOrderbookVenue $ s1 Cat.. unsafeCastOrderbookVenue s2
-
-unsafeCastSellSideVenue
-    :: (KnownSymbol base, KnownSymbol quote)
-    => SellSide venue1 base quote
-    -> SellSide venue2 base quote
-unsafeCastSellSideVenue = SellSide . sellSide
-
-unsafeCastBuySideVenue
-    :: (KnownSymbol base, KnownSymbol quote)
-    => BuySide venue1 base quote
-    -> BuySide venue2 base quote
-unsafeCastBuySideVenue = BuySide . buySide
-
-unsafeCastOrderbookVenue
-    :: (KnownSymbol base, KnownSymbol quote)
-    => OrderBook venue1 base quote
-    -> OrderBook venue2 base quote
-unsafeCastOrderbookVenue = unsafeCastOrderbook
