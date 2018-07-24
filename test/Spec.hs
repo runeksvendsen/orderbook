@@ -8,7 +8,7 @@ import Test.Tasty.SmallCheck  as SC
 import Test.Hspec.Runner
 
 
-scDepth = 5
+scDepth = 4
 
 main = do
    hspecWith defaultConfig { configSmallCheckDepth = scDepth } Matching.spec
