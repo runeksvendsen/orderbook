@@ -168,6 +168,13 @@ fromSomeBook SomeBook{..} =
    OrderBook (BuySide $ map fromSomeOrder sbBids)
              (SellSide $ map fromSomeOrder sbAsks)
 
+toSomeBook
+   :: (KnownSymbol venue, KnownSymbol base, KnownSymbol quote)
+   => OrderBook venue base quote
+   -> SomeBook venue
+toSomeBook OrderBook{..} =
+   SomeBook (map toSomeOrder (buySide obBids))
+            (map toSomeOrder (sellSide obAsks))
 
 data Order (base :: Symbol) (quote :: Symbol) = Order
    { oQuantity :: Money.Dense base
@@ -203,6 +210,14 @@ fromSomeOrder so@SomeOrder{..} = -- We know SomeOrder contains valid Dense/Excha
        throwBug = error $ "SomeOrder: invalid qty/price: " ++ show so in
    Order (fromMaybe throwBug $ Money.dense soQuantity)
          (fromMaybe throwBug $ Money.exchangeRate soPrice)
+
+toSomeOrder
+   :: (KnownSymbol base, KnownSymbol quote)
+   => Order base quote
+   -> SomeOrder
+toSomeOrder Order{..} =
+   SomeOrder (toRational oQuantity)
+             (Money.exchangeRateToRational oPrice)
 
 unsafeCastOrderbook
     :: (KnownSymbol base2, KnownSymbol quote2)
