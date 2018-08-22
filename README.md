@@ -1,5 +1,7 @@
 # Limit order book using `safe-money`
 
+<img src="https://travis-ci.com/runeksvendsen/orderbook.svg?branch=master">
+
 This library implements a limit order book using the `safe-money` library.
 
 It supports two types of queries on order books:
