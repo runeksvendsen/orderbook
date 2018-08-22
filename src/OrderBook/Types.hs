@@ -12,6 +12,7 @@ module OrderBook.Types
 , mkSomeBook
 , fromSomeBook
 , toSomeBook
+, someBookOrders
 , Order(..)
 , SomeOrder
 , AnyBook(..)
@@ -154,6 +155,11 @@ data SomeBook (venue :: Symbol) = SomeBook
    { sbBids  :: Vector SomeOrder
    , sbAsks  :: Vector SomeOrder
    }
+
+someBookOrders
+    :: SomeBook venue
+    -> (Vector SomeOrder, Vector SomeOrder) -- ^ (bids, asks)
+someBookOrders SomeBook{..} = (sbBids, sbAsks)
 
 mkSomeBook
    :: Vector SomeOrder  -- ^ Buy orders (bids)
