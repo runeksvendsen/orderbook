@@ -32,6 +32,8 @@ import qualified Money
 import qualified Data.Vector  as Vec
 import Text.Printf
 import qualified Control.Category   as Cat
+import qualified Data.Aeson         as Json
+import           Data.Aeson         ((.=), (.:))
 
 
 -- | Buyers want to convert "quote" to "base"
@@ -376,3 +378,37 @@ instance Invertible BuySide SellSide where
 instance Invertible (OrderBook venue) (OrderBook venue) where
     invert OrderBook{..} =
         OrderBook (invert obAsks) (invert obBids)
+
+
+instance (KnownSymbol base, KnownSymbol quote) =>
+        Json.ToJSON (BuySide base quote) where
+    toJSON (BuySide orders) = Json.toJSON orders
+
+instance (KnownSymbol base, KnownSymbol quote) =>
+        Json.ToJSON (SellSide base quote) where
+    toJSON (SellSide orders) = Json.toJSON orders
+
+instance (KnownSymbol base, KnownSymbol quote) =>
+        Json.ToJSON (Order base quote) where
+    toJSON Order{..} = Json.object
+        [ "qty"   .= Json.toJSON (toRational oQuantity)
+        , "price" .= Json.toJSON (Money.exchangeRateToRational oPrice)
+        ]
+
+instance (KnownSymbol base, KnownSymbol quote) =>
+        Json.FromJSON (BuySide base quote) where
+    parseJSON val = BuySide <$> Json.parseJSON val
+
+instance (KnownSymbol base, KnownSymbol quote) =>
+        Json.FromJSON (SellSide base quote) where
+    parseJSON val = SellSide <$> Json.parseJSON val
+
+instance (KnownSymbol base, KnownSymbol quote) =>
+        Json.FromJSON (Order base quote) where
+    parseJSON = Json.withObject "Order" $ \obj ->
+        Order <$> fmap Money.dense' (obj .: "qty")
+                 <*> fmap exchangeRate' (obj .: "price")
+      where
+        exchangeRate' r =
+            fromMaybe (error $ "Bad rational: " ++ show r)
+                      (Money.exchangeRate r)
