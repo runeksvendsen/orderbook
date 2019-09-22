@@ -5,11 +5,9 @@ import OrderBook
 import Orphans.OrderBook      (NonEmpty(..))
 import Test.Hspec
 import qualified Money
-import qualified Test.QuickCheck          as QC
 import qualified Test.Hspec.SmallCheck    as SC
 import qualified Test.SmallCheck.Series   as SS
 import Test.HUnit.Lang
-import Text.Printf
 import qualified Data.Vector  as Vec
 
 

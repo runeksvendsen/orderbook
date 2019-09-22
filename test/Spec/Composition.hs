@@ -2,7 +2,7 @@ module Spec.Composition where
 
 import MyPrelude                        hiding (NonEmpty)
 import OrderBook
-import Orphans.OrderBook                (NonEmpty(..))
+import Orphans.OrderBook                ()
 import qualified Control.Category       as Cat
 import qualified Data.Vector            as Vec
 

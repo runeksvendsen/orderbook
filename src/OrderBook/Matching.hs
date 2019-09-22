@@ -2,11 +2,9 @@
 module OrderBook.Matching where
 
 import MyPrelude hiding (trace)
-import Debug.Trace (trace)
 import OrderBook.Types
 import qualified Money
 import qualified Data.Vector as Vec
-import Text.Printf
 
 
 -- | Result of order match

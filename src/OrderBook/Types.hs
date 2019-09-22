@@ -4,8 +4,8 @@
 {-# LANGUAGE TypeFamilies #-}
 module OrderBook.Types
 ( OrderBook(..)
-, BuySide(..), buySide, bestBid
-, SellSide(..), sellSide, bestAsk
+, BuySide(BuySide), buySide, bestBid
+, SellSide(SellSide), sellSide, bestAsk
 , SellOrders(..), BuyOrders(..)
 , OrderbookSide(..)
 , SomeBook
@@ -30,7 +30,6 @@ where
 import MyPrelude
 import qualified Money
 import qualified Data.Vector  as Vec
-import Text.Printf
 import qualified Control.Category   as Cat
 import qualified Data.Aeson         as Json
 import           Data.Aeson         ((.=), (.:))
@@ -353,8 +352,8 @@ instance NFData (AnyBook venue) where
 
 instance (KnownSymbol venue, KnownSymbol base, KnownSymbol quote) =>
             Print (OrderBook venue base quote) where
-   putStr ob = putStr (toS $ show ob :: Text)
-   putStrLn l = putStr l >> putStr ("\n" :: Text)
+   hPutStr h ob = hPutStr h (toS $ show ob :: Text)
+   hPutStrLn h l = hPutStr h l >> hPutStr h ("\n" :: Text)
 
 -- | Flip a type's two "Symbol" type variables (possibly converting to a new type)
 class Invertible (a :: Symbol -> Symbol -> *) (b :: Symbol -> Symbol -> *) where
@@ -378,7 +377,6 @@ instance Invertible BuySide SellSide where
 instance Invertible (OrderBook venue) (OrderBook venue) where
     invert OrderBook{..} =
         OrderBook (invert obAsks) (invert obBids)
-
 
 instance (KnownSymbol base, KnownSymbol quote) =>
         Json.ToJSON (BuySide base quote) where

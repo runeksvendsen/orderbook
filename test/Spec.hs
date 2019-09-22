@@ -7,9 +7,10 @@ import Test.Tasty
 import Test.Tasty.SmallCheck  as SC
 import Test.Hspec.Runner
 
-
+scDepth :: Int
 scDepth = 4
 
+main :: IO ()
 main = do
    hspecWith defaultConfig { configSmallCheckDepth = scDepth } Matching.spec
    hspecWith defaultConfig { configSmallCheckDepth = scDepth } Composition.spec
@@ -19,6 +20,7 @@ properties :: TestTree
 properties = localOption (SC.SmallCheckDepth scDepth) $
    testGroup "Properties" [scProps]
 
+scProps :: TestTree
 scProps = testGroup "(checked by SmallCheck)"
   [ SC.testProperty "slippageSell ob x == marketSell ob (resBaseQty $ slippageSell ob x)" $
       \ob slippage' -> Matching.propSellSlippageBase (==) ob slippage'
