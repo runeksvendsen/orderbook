@@ -2,6 +2,7 @@ import MyPrelude
 
 import qualified Spec.Matching      as Matching
 import qualified Spec.Composition   as Composition
+import qualified Spec.Combine       as Combine
 
 import Test.Tasty
 import Test.Tasty.SmallCheck  as SC
@@ -14,6 +15,7 @@ main :: IO ()
 main = do
    hspecWith defaultConfig { configSmallCheckDepth = scDepth } Matching.spec
    hspecWith defaultConfig { configSmallCheckDepth = scDepth } Composition.spec
+   hspecWith defaultConfig { configSmallCheckDepth = scDepth } Combine.spec
    defaultMain properties
 
 properties :: TestTree

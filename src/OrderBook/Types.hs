@@ -28,6 +28,7 @@ module OrderBook.Types
 where
 
 import MyPrelude
+import qualified OrderBook.Util     as Util
 import qualified Money
 import qualified Data.Vector  as Vec
 import qualified Control.Category   as Cat
@@ -54,12 +55,27 @@ bestAsk = (Vec.!? 0) . sellSide . obAsks
 instance Cat.Category BuySide where
    id = BuySide (Vec.fromList $ repeat largeQtyIdOrder)
    (BuySide b1) . (BuySide b2) = BuySide $ Vec.fromList orders
-      where orders = composeLst (Vec.toList b1) (Vec.toList b2)
+      where orders = composeLst (merge $ Vec.toList b1) (merge $ Vec.toList b2)
 
 instance Cat.Category SellSide where
    id = SellSide (Vec.fromList $ repeat largeQtyIdOrder)
    (SellSide b1) . (SellSide b2) = SellSide $ Vec.fromList orders
-      where orders = composeLst (Vec.toList b1) (Vec.toList b2)
+      where orders = composeLst (merge $ Vec.toList b1) (merge $ Vec.toList b2)
+
+-- | merge adjacent orders with same price (ignoring venue)
+merge
+    :: [Order base quote]
+    -- ^ List of orders
+    -> [Order base quote]
+merge =
+    Util.combine tryMergeOrders
+  where
+    mergeOrders order1 order2 = order1 { oQuantity = oQuantity order1 + oQuantity order2 }
+    tryMergeOrders order1 order2 =
+        if oPrice order1 == oPrice order2
+            then Just (mergeOrders order1 order2)
+            else Nothing
+
 
 -- | Compose two lists of orders
 composeLst
