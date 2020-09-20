@@ -1,0 +1,79 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.31.1.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 9c571aa50790aff8d394bda9b8561b4186e60076e2cdbd3543bce613fcbbb5d9
+
+name:           orderbook
+version:        0.1.0.0
+synopsis:       Type safe orderbook
+description:    Please see the README on Github at <https://github.com/githubuser/orderbook#readme>
+homepage:       https://github.com/runeksvendsen/orderbook#readme
+bug-reports:    https://github.com/runeksvendsen/orderbook/issues
+author:         Rune K. Svendsen
+maintainer:     example@example.com
+copyright:      2018 Rune K. Svendsen
+license:        BSD3
+build-type:     Simple
+extra-source-files:
+    README.md
+
+source-repository head
+  type: git
+  location: https://github.com/runeksvendsen/orderbook
+
+library
+  exposed-modules:
+      MyPrelude
+      OrderBook
+      OrderBook.Matching
+      OrderBook.Types
+      OrderBook.Util
+  other-modules:
+      Paths_orderbook
+  hs-source-dirs:
+      src
+  default-extensions: StrictData BangPatterns NoImplicitPrelude ScopedTypeVariables MultiParamTypeClasses ScopedTypeVariables OverloadedStrings KindSignatures DataKinds FlexibleInstances DeriveGeneric RecordWildCards DuplicateRecordFields FlexibleContexts DeriveFunctor TypeOperators
+  ghc-options: -Wall -fno-warn-name-shadowing
+  build-depends:
+      aeson
+    , base >=4.7 && <5
+    , protolude
+    , safe-money
+    , text
+    , vector
+  default-language: Haskell2010
+
+test-suite orderbook-test
+  type: exitcode-stdio-1.0
+  main-is: Spec.hs
+  other-modules:
+      Orphans.OrderBook
+      Spec.Combine
+      Spec.Composition
+      Spec.Matching
+      Paths_orderbook
+  hs-source-dirs:
+      test
+  default-extensions: StrictData BangPatterns NoImplicitPrelude ScopedTypeVariables MultiParamTypeClasses ScopedTypeVariables OverloadedStrings KindSignatures DataKinds FlexibleInstances DeriveGeneric RecordWildCards DuplicateRecordFields FlexibleContexts DeriveFunctor TypeOperators
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall -fno-warn-name-shadowing
+  build-depends:
+      HUnit
+    , QuickCheck
+    , aeson
+    , base >=4.7 && <5
+    , hspec
+    , hspec-expectations-pretty-diff
+    , hspec-smallcheck
+    , orderbook
+    , protolude
+    , safe-money
+    , smallcheck
+    , tasty
+    , tasty-quickcheck
+    , tasty-smallcheck
+    , text
+    , vector
+  default-language: Haskell2010
