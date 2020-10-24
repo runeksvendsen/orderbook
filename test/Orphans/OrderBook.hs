@@ -84,17 +84,3 @@ instance (KnownSymbol base, KnownSymbol quote) =>
 instance QC.Arbitrary (Order base quote) where
    arbitrary = Order <$> QC.arbitrary `QC.suchThat` (> Money.dense' 0)
                      <*> QC.arbitrary
-
-instance QC.Arbitrary (Money.Dense currency) where
-  arbitrary = do
-    Just x <- QC.suchThat (Money.dense <$> QC.arbitrary) isJust
-    pure x
-  shrink = catMaybes . fmap Money.dense . QC.shrink . toRational
-
-
-instance QC.Arbitrary (Money.ExchangeRate src dst) where
-  arbitrary = do
-    Just x <- QC.suchThat (fmap Money.exchangeRate QC.arbitrary) isJust
-    pure x
-  shrink =
-    catMaybes . fmap Money.exchangeRate . QC.shrink . Money.exchangeRateToRational

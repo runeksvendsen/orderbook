@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.31.1.
+-- This file has been generated from package.yaml by hpack version 0.33.0.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9c571aa50790aff8d394bda9b8561b4186e60076e2cdbd3543bce613fcbbb5d9
+-- hash: caf8f001887deb535f7f1ce1bac553692d9206d7ef7b29e6e5f7ab1fc0c82667
 
 name:           orderbook
 version:        0.1.0.0
@@ -39,7 +39,7 @@ library
   ghc-options: -Wall -fno-warn-name-shadowing
   build-depends:
       aeson
-    , base >=4.7 && <5
+    , base
     , protolude
     , safe-money
     , text
@@ -63,7 +63,7 @@ test-suite orderbook-test
       HUnit
     , QuickCheck
     , aeson
-    , base >=4.7 && <5
+    , base
     , hspec
     , hspec-expectations-pretty-diff
     , hspec-smallcheck

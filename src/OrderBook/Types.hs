@@ -20,6 +20,7 @@ module OrderBook.Types
 , fromOrder
 , midPrice
 , showOrders
+, showBookUgly
 , Invertible(..)
   -- * Test
 , composeRem
@@ -304,6 +305,26 @@ showOrder name cumVolM Order{..} =
       maybeVol :: String
       maybeVol = maybe "]" mkCumVol cumVolM
    in printf template name doubleQty baseS doublePrice quoteS baseS maybeVol
+
+showBookUgly
+    :: forall venue base quote.
+    ( KnownSymbol venue
+    , KnownSymbol base
+    , KnownSymbol quote
+    )
+    => OrderBook venue base quote
+    -> String
+showBookUgly (OrderBook (BuySide bids) (SellSide asks)) =
+    let showOrderVector = intercalate " " . map showOrderUgly . Vec.toList
+    in "<" ++ venue ++ " " ++ currPair ++ ", bids: " ++ showOrderVector bids ++ ", asks: " ++ showOrderVector asks ++ ">"
+  where
+    venue = symbolVal (Proxy :: Proxy venue)
+    currPair = symbolVal (Proxy :: Proxy base) <> "/" <> symbolVal (Proxy :: Proxy quote)
+    showOrderUgly :: Order src dst -> String
+    showOrderUgly Order{..} =
+        let doublePrice = realToFrac . Money.exchangeRateToRational $ oPrice
+            doubleQty = realToFrac oQuantity
+        in printf "[%f @ %f]" (doubleQty :: Double) (doublePrice :: Double)
 
 instance (KnownSymbol base, KnownSymbol quote) => Show (Order base quote) where
    show = showOrder "Order" Nothing
