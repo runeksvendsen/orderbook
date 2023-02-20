@@ -11,7 +11,7 @@ module MyPrelude
 )
 where
 
-import Protolude hiding (trace, Show, show)
+import Protolude hiding (trace, Show, show, lines, unlines)
 import Prelude (String, Show, show, id, mod, lookup, error, lines, unlines)
 import Debug.Trace (trace)
 import GHC.TypeLits as TypeLits (Symbol, KnownSymbol, SomeSymbol(..)
