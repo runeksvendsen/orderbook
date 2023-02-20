@@ -48,7 +48,7 @@ instance (KnownSymbol base, KnownSymbol quote, Monad m) =>
 instance (KnownSymbol base, KnownSymbol quote, Monad m) =>
    Serial m (Order base quote) where
       series = do
-         Positive qty <- series
+         Positive' qty <- series
          price        <- series
          return $ Order qty price
 
@@ -63,10 +63,10 @@ instance (KnownSymbol symbol, Monad m) =>
    Serial m (Money.Dense symbol)
 
 instance (KnownSymbol symbol, Monad m) =>
-   Serial m (Positive (Money.Dense symbol)) where
+   Serial m (Positive' (Money.Dense symbol)) where
       series = do
          Positive (rat :: Rational) <- series
-         return $ Positive (Money.dense' rat)
+         return $ Positive' (Money.dense' rat)
 
 
 instance (Show a, Serial m a) => Serial m (Vector a) where
@@ -84,3 +84,6 @@ instance (KnownSymbol base, KnownSymbol quote) =>
 instance QC.Arbitrary (Order base quote) where
    arbitrary = Order <$> QC.arbitrary `QC.suchThat` (> Money.dense' 0)
                      <*> QC.arbitrary
+
+-- | Only exists to avoid an orphan instance of 'Test.SmallCheck.Series.Positive'
+newtype Positive' a = Positive' a
