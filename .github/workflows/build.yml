@@ -26,8 +26,17 @@ jobs:
           name: crypto-venues
           authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
-      - name: Build
-        run: nix-build
+      - name: Build library
+        run: nix-build -A orderbook.components.library
 
-      - name: Test
+      - name: Build tests
+        run: nix-build -A orderbook.components.tests
+
+      - name: Run tests
         run: $(nix-build -A orderbook.components.tests)/bin/orderbook-test
+
+      - name: Build executables
+        run: nix-build -A orderbook.components.exes
+
+      - name: Test shell
+        run: nix-shell --run "echo success"
