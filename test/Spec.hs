@@ -13,9 +13,9 @@ scDepth = 4
 
 main :: IO ()
 main = do
-   hspecWith defaultConfig { configSmallCheckDepth = scDepth } Matching.spec
-   hspecWith defaultConfig { configSmallCheckDepth = scDepth } Composition.spec
-   hspecWith defaultConfig { configSmallCheckDepth = scDepth } Combine.spec
+   hspecWith defaultConfig { configSmallCheckDepth = Just scDepth } Matching.spec
+   hspecWith defaultConfig { configSmallCheckDepth = Just scDepth } Composition.spec
+   hspecWith defaultConfig { configSmallCheckDepth = Just scDepth } Combine.spec
    defaultMain properties
 
 properties :: TestTree
