@@ -1,6 +1,2 @@
 cradle:
-  stack:
-    - path: "./src"
-      component: "orderbook:lib"
-    - path: "./test"
-      component: "orderbook:test:orderbook-test"
+  cabal:
