@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: caf8f001887deb535f7f1ce1bac553692d9206d7ef7b29e6e5f7ab1fc0c82667
+-- hash: 25b99a8f2869489cff7d3cd21efe05721e603bbd416302b4a18adc9c0c8140bc
 
 name:           orderbook
 version:        0.1.0.0
@@ -35,7 +35,23 @@ library
       Paths_orderbook
   hs-source-dirs:
       src
-  default-extensions: StrictData BangPatterns NoImplicitPrelude ScopedTypeVariables MultiParamTypeClasses ScopedTypeVariables OverloadedStrings KindSignatures DataKinds FlexibleInstances DeriveGeneric RecordWildCards DuplicateRecordFields FlexibleContexts DeriveFunctor TypeOperators
+  default-extensions:
+      StrictData
+      BangPatterns
+      NoImplicitPrelude
+      ScopedTypeVariables
+      MultiParamTypeClasses
+      ScopedTypeVariables
+      OverloadedStrings
+      KindSignatures
+      DataKinds
+      FlexibleInstances
+      DeriveGeneric
+      RecordWildCards
+      DuplicateRecordFields
+      FlexibleContexts
+      DeriveFunctor
+      TypeOperators
   ghc-options: -Wall -fno-warn-name-shadowing
   build-depends:
       aeson
@@ -57,7 +73,23 @@ test-suite orderbook-test
       Paths_orderbook
   hs-source-dirs:
       test
-  default-extensions: StrictData BangPatterns NoImplicitPrelude ScopedTypeVariables MultiParamTypeClasses ScopedTypeVariables OverloadedStrings KindSignatures DataKinds FlexibleInstances DeriveGeneric RecordWildCards DuplicateRecordFields FlexibleContexts DeriveFunctor TypeOperators
+  default-extensions:
+      StrictData
+      BangPatterns
+      NoImplicitPrelude
+      ScopedTypeVariables
+      MultiParamTypeClasses
+      ScopedTypeVariables
+      OverloadedStrings
+      KindSignatures
+      DataKinds
+      FlexibleInstances
+      DeriveGeneric
+      RecordWildCards
+      DuplicateRecordFields
+      FlexibleContexts
+      DeriveFunctor
+      TypeOperators
   ghc-options: -threaded -rtsopts -with-rtsopts=-N -Wall -fno-warn-name-shadowing
   build-depends:
       HUnit
