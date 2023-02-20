@@ -28,3 +28,6 @@ jobs:
 
       - name: Build
         run: nix-build
+
+      - name: Test
+        run: $(nix-build -A orderbook.components.tests)/bin/orderbook-test
